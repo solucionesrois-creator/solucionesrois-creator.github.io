@@ -73,8 +73,8 @@
     "areaServed": { "@type": "Country", "name": "México" },
     "sameAs": ["https://www.instagram.com/rois.soluciones"],
     "founder": [
-      { "@type": "Person", "name": "Daniel Esparza", "jobTitle": "Consultor Estratégico y Fundador" },
-      { "@type": "Person", "name": "Johanna Millán", "jobTitle": "Desarrollo de Personas y Negocios Digitales" }
+      { "@type": "Person", "name": "Daniel Esparza", "jobTitle": "Cofundador y Consultor Estratégico" },
+      { "@type": "Person", "name": "Johanna Millán", "jobTitle": "Cofundadora · Desarrollo de Personas y Negocios Digitales" }
     ]
   }
   </script>
@@ -408,10 +408,10 @@
     .dolor-list { display: flex; flex-direction: column; gap: 20px; }
     .dolor {
       display: grid;
-      grid-template-columns: 110px 1fr;
+      grid-template-columns: 88px 1fr;
       align-items: center;
-      gap: 32px;
-      padding: 36px 40px;
+      gap: 28px;
+      padding: 32px 40px;
       background: var(--crema);
       border-radius: 6px;
       border-left: 4px solid var(--rojo);
@@ -422,13 +422,18 @@
       box-shadow: 0 20px 40px rgba(26, 20, 16, 0.07);
     }
     .dolor-num {
-      font-family: var(--serif);
-      font-style: italic;
-      font-size: 72px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--rojo);
+      color: var(--blanco);
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 30px;
       line-height: 1;
-      color: var(--rojo);
-      font-weight: 500;
-      opacity: 0.9;
+      letter-spacing: 0;
     }
     .dolor-text {
       font-family: var(--serif);
@@ -437,8 +442,8 @@
       color: var(--negro);
     }
     @media (max-width: 640px) {
-      .dolor { grid-template-columns: 1fr; gap: 12px; padding: 28px 24px; }
-      .dolor-num { font-size: 48px; }
+      .dolor { grid-template-columns: 1fr; gap: 16px; padding: 28px 24px; }
+      .dolor-num { width: 56px; height: 56px; font-size: 24px; }
     }
 
     /* ===== QUIENES ===== */
@@ -570,14 +575,13 @@
       justify-content: center;
       width: 56px; height: 56px;
       border-radius: 50%;
-      background: var(--negro);
-      color: var(--rojo);
-      font-family: var(--serif);
-      font-style: italic;
-      font-weight: 600;
+      background: var(--rojo);
+      color: var(--blanco);
+      font-family: var(--sans);
+      font-weight: 700;
       font-size: 22px;
       margin-bottom: 24px;
-      letter-spacing: 0.02em;
+      letter-spacing: 0;
     }
     .caso-title {
       font-family: var(--serif);
@@ -783,8 +787,20 @@
     .stagger.visible > *:nth-child(5) { transition-delay: 400ms; }
     .stagger.visible > *:nth-child(6) { transition-delay: 500ms; }
 
+    /* Stagger horizontal: entrada deslizando desde la izquierda */
+    .stagger-x > * {
+      opacity: 0;
+      transform: translateX(-56px);
+      transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1);
+    }
+    .stagger-x.visible > * { opacity: 1; transform: translateX(0); }
+    .stagger-x.visible > *:nth-child(1) { transition-delay: 0ms; }
+    .stagger-x.visible > *:nth-child(2) { transition-delay: 150ms; }
+    .stagger-x.visible > *:nth-child(3) { transition-delay: 300ms; }
+    .stagger-x.visible > *:nth-child(4) { transition-delay: 450ms; }
+
     @media (prefers-reduced-motion: reduce) {
-      .reveal, .stagger > * { opacity: 1 !important; transform: none !important; transition: none !important; }
+      .reveal, .stagger > *, .stagger-x > * { opacity: 1 !important; transform: none !important; transition: none !important; }
       html { scroll-behavior: auto; }
     }
   </style>
@@ -881,17 +897,17 @@
         <h2 class="h2">Si te suena familiar, <em>no estás solo.</em></h2>
       </div>
 
-      <div class="dolor-list stagger">
+      <div class="dolor-list stagger-x">
         <div class="dolor">
-          <div class="dolor-num">I</div>
+          <div class="dolor-num">1</div>
           <p class="dolor-text">"Trabajo más horas que nunca y el dinero no alcanza más que antes."</p>
         </div>
         <div class="dolor">
-          <div class="dolor-num">II</div>
+          <div class="dolor-num">2</div>
           <p class="dolor-text">"Tengo clientes, pero no sé cuáles me dejan ganancia real."</p>
         </div>
         <div class="dolor">
-          <div class="dolor-num">III</div>
+          <div class="dolor-num">3</div>
           <p class="dolor-text">"Intenté crecer y solo crecieron mis problemas."</p>
         </div>
       </div>
@@ -910,12 +926,12 @@
       <div class="team-grid stagger">
         <div class="persona">
           <div class="persona-name">Daniel Esparza</div>
-          <div class="persona-role">Consultor Estratégico y Fundador</div>
+          <div class="persona-role">Cofundador · Consultor Estratégico</div>
           <p class="persona-desc">Licenciado en Administración de Negocios Internacionales especializado en diagnóstico empresarial. Detecta fugas, ineficiencias y pérdidas que los dueños no pueden ver desde adentro — y construye las herramientas digitales y estrategias operativas para resolverlas. Ha diseñado sistemas de automatización, plataformas de seguimiento y procesos de venta para negocios en distintas industrias.</p>
         </div>
         <div class="persona">
           <div class="persona-name">Johanna Millán</div>
-          <div class="persona-role">Desarrollo de Personas y Negocios Digitales</div>
+          <div class="persona-role">Cofundadora · Desarrollo de Personas y Negocios Digitales</div>
           <p class="persona-desc">Especialista en capital humano y transformación organizacional con formación ANI y experiencia en empresas de alto nivel. Identifica el potencial humano de cada organización para construir estrategias que mejoran el rendimiento del equipo y generan ambientes laborales que retienen talento y producen resultados.</p>
         </div>
       </div>
@@ -961,17 +977,17 @@
 
       <div class="caso-grid stagger">
         <div class="caso">
-          <div class="caso-num">I</div>
+          <div class="caso-num">1</div>
           <h3 class="caso-title">Visibilidad recuperada</h3>
           <p class="caso-desc">Una empresa de distribución retomó contacto con clientes que llevaban 3 meses sin responder.</p>
         </div>
         <div class="caso">
-          <div class="caso-num">II</div>
+          <div class="caso-num">2</div>
           <h3 class="caso-title">De manual a automatizado</h3>
           <p class="caso-desc">Una institución educativa pasó de registros manuales a sistema automatizado en 2 semanas.</p>
         </div>
         <div class="caso">
-          <div class="caso-num">III</div>
+          <div class="caso-num">3</div>
           <h3 class="caso-title">$8,000 MXN recuperados al mes</h3>
           <p class="caso-desc">Un negocio de servicios identificó una fuga que llevaba 4 años sin detectar.</p>
         </div>
@@ -1127,15 +1143,15 @@
           }
         });
       }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
-      document.querySelectorAll('.reveal, .stagger').forEach(function (el) {
+      document.querySelectorAll('.reveal, .stagger, .stagger-x').forEach(function (el) {
         revealIO.observe(el);
       });
 
-      // Animated counters
+      // Animated counters — se disparan cuando el grid entra al viewport
       function animateCounter(el) {
         const target = parseFloat(el.dataset.target);
         const suffix = el.dataset.suffix || '';
-        const duration = 1700;
+        const duration = 2000;
         const start = performance.now();
         function tick(now) {
           const t = Math.min(1, (now - start) / duration);
@@ -1150,12 +1166,12 @@
       const counterIO = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
           if (entry.isIntersecting) {
-            animateCounter(entry.target);
+            entry.target.querySelectorAll('[data-target]').forEach(animateCounter);
             counterIO.unobserve(entry.target);
           }
         });
-      }, { threshold: 0.5 });
-      document.querySelectorAll('[data-target]').forEach(function (el) {
+      }, { threshold: 0.25 });
+      document.querySelectorAll('.stat-grid').forEach(function (el) {
         counterIO.observe(el);
       });
     })();
