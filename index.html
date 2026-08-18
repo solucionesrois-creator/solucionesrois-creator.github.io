@@ -22,7 +22,7 @@
   <meta name="language" content="Spanish" />
   <meta name="geo.region" content="MX-CMX" />
   <meta name="geo.placename" content="Ciudad de México" />
-  <meta name="theme-color" content="#A8213B" />
+  <meta name="theme-color" content="#9D1F22" />
   <link rel="canonical" href="https://solucionesrois-creator.github.io" />
 
   <!-- Open Graph -->
@@ -43,13 +43,13 @@
   <meta name="twitter:image" content="https://solucionesrois-creator.github.io/og-image.png" />
 
   <!-- Favicon (R roja sobre negro) -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231A1410'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' font-weight='700' fill='%23A8213B' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='28' fill='%231A1410'/%3E%3Ctext x='90' y='128' font-family='Georgia,serif' font-size='124' font-weight='700' fill='%23A8213B' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23111519'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' font-weight='700' fill='%239D1F22' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='28' fill='%23111519'/%3E%3Ctext x='90' y='128' font-family='Georgia,serif' font-size='124' font-weight='700' fill='%239D1F22' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&display=swap" rel="stylesheet" />
 
   <!-- Schema.org -->
   <script type="application/ld+json">
@@ -71,7 +71,7 @@
       "addressCountry": "MX"
     },
     "areaServed": { "@type": "Country", "name": "México" },
-    "sameAs": ["https://www.instagram.com/rois.soluciones"],
+    "sameAs": ["https://www.instagram.com/soluciones.rois"],
     "founder": [
       { "@type": "Person", "name": "Daniel Esparza", "jobTitle": "Cofundador y Consultor Estratégico" },
       { "@type": "Person", "name": "Johanna Millán", "jobTitle": "Cofundadora · Desarrollo de Personas y Negocios Digitales" }
@@ -81,15 +81,15 @@
 
   <style>
     :root {
-      --rojo: #A8213B;
-      --rojo-oscuro: #7d1729;
-      --negro: #1A1410;
+      --rojo: #9D1F22;
+      --rojo-oscuro: #7a1519;
+      --negro: #111519;
       --blanco: #FFFFFF;
-      --crema: #FAF8F5;
+      --crema: #F3F2F0;
       --gris-suave: #E8E3DC;
       --gris-medio: #B8B0A6;
-      --serif: 'Cormorant Garamond', Georgia, serif;
-      --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --serif: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+      --sans: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       --nav-h: 76px;
     }
 
@@ -100,7 +100,7 @@
       font-size: 17px;
       line-height: 1.65;
       color: var(--negro);
-      background-color: var(--blanco);
+      background-color: #F3F2F0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -138,10 +138,11 @@
       height: 100%;
     }
     .brand {
-      font-family: var(--serif);
-      font-size: 26px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
+      font-family: var(--sans);
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       color: currentColor;
     }
     .brand span { color: var(--rojo); }
@@ -212,8 +213,9 @@
     .mobile-menu.open { transform: translateX(0); }
     .mobile-menu a {
       color: var(--crema);
-      font-family: var(--serif);
-      font-size: 30px;
+      font-family: var(--sans);
+      font-weight: 900;
+      font-size: 26px;
       padding: 18px 0;
       border-bottom: 1px solid rgba(250, 248, 245, 0.1);
       transition: color .2s ease;
@@ -287,8 +289,8 @@
       font-family: var(--serif);
       color: inherit;
       line-height: 1.1;
-      letter-spacing: -0.015em;
-      font-weight: 500;
+      letter-spacing: -0.025em;
+      font-weight: 900;
     }
     .h1 { font-size: clamp(44px, 7vw, 80px); }
     .h2 { font-size: clamp(36px, 5.2vw, 60px); }
@@ -718,9 +720,11 @@
       .footer-grid { grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 48px; }
     }
     .footer-brand-block .footer-brand {
-      font-family: var(--serif);
-      font-size: 30px;
-      font-weight: 600;
+      font-family: var(--sans);
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       margin-bottom: 10px;
     }
     .footer-brand span { color: var(--rojo); }
@@ -920,7 +924,7 @@
       <div class="quienes-head reveal">
         <div class="eyebrow">Quiénes somos</div>
         <h2 class="h2">Una firma, no una agencia.</h2>
-        <p class="quienes-intro">Trabajamos con dueños de PYMES con más de 2 años en operación que dominan su oficio — pero necesitan una mirada externa y herramientas concretas para volver a crecer.</p>
+        <p class="quienes-intro">Atendemos negocios y empresas con 2+ años de operación. Diagnosticamos primero, después ordenamos procesos, y automatizamos con IA solo donde de verdad conviene.</p>
       </div>
 
       <div class="team-grid stagger">
@@ -1037,6 +1041,37 @@
     </div>
   </section>
 
+  <!-- FILOSOFÍA -->
+  <section style="background:var(--negro);color:var(--crema);padding:128px 0;" id="filosofia">
+    <div class="container">
+      <div class="reveal" style="max-width:640px;margin-bottom:72px;">
+        <div class="eyebrow" style="color:var(--rojo);">Por qué existimos</div>
+        <h2 class="h2">Nuestra filosofía.</h2>
+      </div>
+      <div class="stagger" style="display:grid;grid-template-columns:1fr 1fr;gap:56px;margin-bottom:72px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--rojo);margin-bottom:20px;">Misión</div>
+          <p style="font-size:17px;line-height:1.7;color:rgba(243,242,240,0.85);">Ayudar a negocios con 2+ años de operación a diagnosticar sus fallas estructurales y construir los sistemas que les permiten crecer sin que todo dependa del dueño.</p>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--rojo);margin-bottom:20px;">Visión</div>
+          <p style="font-size:17px;line-height:1.7;color:rgba(243,242,240,0.85);">Ser la firma de consultoría estratégica de referencia para PYMES en CDMX que diagnostica primero y propone soluciones sobre realidades operativas reales.</p>
+        </div>
+      </div>
+      <div class="reveal">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--rojo);margin-bottom:28px;">Nuestros valores</div>
+        <div class="stagger" style="display:flex;flex-wrap:wrap;gap:12px;">
+          <span style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(243,242,240,0.2);padding:10px 20px;border-radius:2px;">Innovación</span>
+          <span style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(243,242,240,0.2);padding:10px 20px;border-radius:2px;">Empatía</span>
+          <span style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(243,242,240,0.2);padding:10px 20px;border-radius:2px;">Lealtad</span>
+          <span style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(243,242,240,0.2);padding:10px 20px;border-radius:2px;">Unidad</span>
+          <span style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(243,242,240,0.2);padding:10px 20px;border-radius:2px;">Honestidad</span>
+          <span style="font-size:13px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(243,242,240,0.2);padding:10px 20px;border-radius:2px;">Eficiencia</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA FINAL -->
   <section class="cta-final">
     <div class="container reveal">
@@ -1082,7 +1117,7 @@
           <ul>
             <li><a href="https://wa.me/525620114600" target="_blank" rel="noopener">56 2011 4600</a></li>
             <li><a href="mailto:solucionesrois@gmail.com">solucionesrois@gmail.com</a></li>
-            <li><a href="https://www.instagram.com/rois.soluciones" target="_blank" rel="noopener">@rois.soluciones</a></li>
+            <li><a href="https://www.instagram.com/soluciones.rois" target="_blank" rel="noopener">@soluciones.rois</a></li>
           </ul>
         </div>
       </div>

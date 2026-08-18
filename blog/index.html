@@ -17,7 +17,7 @@
   <title>Blog · ROIS Consultoría & Estrategia</title>
   <meta name="description" content="Recursos, artículos y análisis para dueños de PYMES en México. Publicados por ROIS Consultoría & Estrategia." />
   <meta name="robots" content="index, follow" />
-  <meta name="theme-color" content="#A8213B" />
+  <meta name="theme-color" content="#9D1F22" />
   <link rel="canonical" href="https://solucionesrois-creator.github.io/blog/" />
 
   <!-- Open Graph -->
@@ -29,24 +29,24 @@
   <meta property="og:locale" content="es_MX" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231A1410'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' font-weight='700' fill='%23A8213B' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='28' fill='%231A1410'/%3E%3Ctext x='90' y='128' font-family='Georgia,serif' font-size='124' font-weight='700' fill='%23A8213B' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23111519'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' font-weight='700' fill='%239D1F22' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='28' fill='%23111519'/%3E%3Ctext x='90' y='128' font-family='Georgia,serif' font-size='124' font-weight='700' fill='%239D1F22' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --rojo: #A8213B;
-      --rojo-oscuro: #7d1729;
-      --negro: #1A1410;
+      --rojo: #9D1F22;
+      --rojo-oscuro: #7a1519;
+      --negro: #111519;
       --blanco: #FFFFFF;
-      --crema: #FAF8F5;
+      --crema: #F3F2F0;
       --gris-suave: #E8E3DC;
-      --serif: 'Cormorant Garamond', Georgia, serif;
-      --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --serif: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+      --sans: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       --nav-h: 76px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,7 +56,7 @@
       font-size: 17px;
       line-height: 1.65;
       color: var(--negro);
-      background-color: var(--blanco);
+      background-color: #F3F2F0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       min-height: 100vh;
@@ -80,7 +80,7 @@
       box-shadow: 0 2px 24px rgba(26, 20, 16, 0.08);
     }
     .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 100%; }
-    .brand { font-family: var(--serif); font-size: 26px; font-weight: 600; color: currentColor; }
+    .brand { font-family: var(--sans); font-size: 22px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: currentColor; }
     .brand span { color: var(--rojo); }
     .nav-links {
       display: none;
@@ -127,8 +127,9 @@
     .mobile-menu.open { transform: translateX(0); }
     .mobile-menu a {
       color: var(--crema);
-      font-family: var(--serif);
-      font-size: 30px;
+      font-family: var(--sans);
+      font-weight: 900;
+      font-size: 26px;
       padding: 18px 0;
       border-bottom: 1px solid rgba(250, 248, 245, 0.1);
     }
@@ -173,9 +174,9 @@
     .blog-hero h1 {
       font-family: var(--serif);
       font-size: clamp(44px, 7vw, 72px);
-      font-weight: 500;
+      font-weight: 900;
       line-height: 1.1;
-      letter-spacing: -0.015em;
+      letter-spacing: -0.025em;
       margin-bottom: 24px;
       color: var(--negro);
     }
@@ -226,7 +227,7 @@
       .footer-grid { grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 48px; }
     }
     .footer-brand-block .footer-brand {
-      font-family: var(--serif); font-size: 30px; font-weight: 600; margin-bottom: 10px;
+      font-family: var(--sans); font-size: 24px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px;
     }
     .footer-brand span { color: var(--rojo); }
     .footer-tagline {
@@ -331,7 +332,7 @@
           <ul>
             <li><a href="https://wa.me/525620114600" target="_blank" rel="noopener">56 2011 4600</a></li>
             <li><a href="mailto:solucionesrois@gmail.com">solucionesrois@gmail.com</a></li>
-            <li><a href="https://www.instagram.com/rois.soluciones" target="_blank" rel="noopener">@rois.soluciones</a></li>
+            <li><a href="https://www.instagram.com/soluciones.rois" target="_blank" rel="noopener">@soluciones.rois</a></li>
           </ul>
         </div>
       </div>
