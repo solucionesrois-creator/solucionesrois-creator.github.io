@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROIS · Planeador de Contenido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --rojo:#9D1F22;
+    --negro:#111519;
+    --crema:#F3F2F0;
+    --gris:#4A4A4A;
+    --tipo-lista:#9D1F22;
+    --tipo-hook:#1a5c2a;
+    --tipo-story:#1a3a5c;
+    --tipo-pelicula:#4a1a5c;
+    --tipo-carrusel:#7a3a0a;
+    --radio:10px;
+    --sombra:0 2px 8px rgba(17,21,25,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Lato',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--crema);
+    color:var(--negro);
+    font-weight:400;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    background:var(--negro);
+    padding:14px 16px 0;
+    position:sticky;
+    top:0;
+    z-index:40;
+  }
+  header h1{
+    color:var(--rojo);
+    font-weight:900;
+    font-size:1.15rem;
+    letter-spacing:.3px;
+    margin-bottom:12px;
+  }
+  .tabs{
+    display:flex;
+    gap:4px;
+  }
+  .tab{
+    flex:1;
+    background:transparent;
+    border:none;
+    color:#fff;
+    font-family:inherit;
+    font-size:.9rem;
+    font-weight:700;
+    padding:10px 6px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    opacity:.6;
+    transition:opacity .15s,border-color .15s;
+  }
+  .tab.active{
+    opacity:1;
+    border-bottom-color:var(--rojo);
+  }
+
+  /* ---------- TOOLBAR ---------- */
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:12px 16px;
+    align-items:center;
+  }
+  .toolbar input[type="search"],
+  .toolbar select{
+    font-family:inherit;
+    font-size:.85rem;
+    padding:8px 10px;
+    border:1px solid #d4d2ce;
+    border-radius:var(--radio);
+    background:#fff;
+    color:var(--negro);
+  }
+  .toolbar input[type="search"]{flex:1;min-width:140px}
+  .btn{
+    font-family:inherit;
+    font-size:.8rem;
+    font-weight:700;
+    padding:8px 12px;
+    border:1px solid var(--negro);
+    border-radius:var(--radio);
+    background:#fff;
+    color:var(--negro);
+    cursor:pointer;
+  }
+  .btn:hover{background:var(--negro);color:#fff}
+  .btn-rojo{background:var(--rojo);border-color:var(--rojo);color:#fff}
+  .btn-rojo:hover{background:#7d1719}
+
+  /* ---------- VIEWS ---------- */
+  .view{display:none;flex:1}
+  .view.active{display:block}
+
+  /* ---------- KANBAN ---------- */
+  #kanban-cols{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    padding:4px 16px 100px;
+    align-items:flex-start;
+    -webkit-overflow-scrolling:touch;
+  }
+  .col{
+    background:#e9e7e3;
+    border-radius:var(--radio);
+    min-width:250px;
+    max-width:250px;
+    flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    max-height:calc(100vh - 220px);
+  }
+  .col-head{
+    padding:10px 12px;
+    font-weight:900;
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color:var(--gris);
+    border-bottom:2px solid #d4d2ce;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .col-head .count{
+    background:var(--negro);
+    color:#fff;
+    border-radius:20px;
+    padding:1px 8px;
+    font-size:.7rem;
+  }
+  .col-body{
+    padding:10px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-height:60px;
+  }
+  .col-body.drag-over{background:rgba(157,31,34,.08);border-radius:8px}
+  .empty-msg{
+    color:#9a9894;
+    font-size:.8rem;
+    font-style:italic;
+    text-align:center;
+    padding:16px 8px;
+  }
+  .card{
+    background:#fff;
+    border-radius:8px;
+    padding:10px;
+    box-shadow:var(--sombra);
+    cursor:grab;
+    border-left:4px solid var(--gris);
+  }
+  .card:active{cursor:grabbing}
+  .card.dragging{opacity:.4}
+  .card .tipo-tag{
+    display:inline-block;
+    font-size:.62rem;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+    color:#fff;
+    padding:2px 6px;
+    border-radius:4px;
+    margin-bottom:6px;
+  }
+  .card .card-title{
+    font-weight:700;
+    font-size:.9rem;
+    line-height:1.25;
+    margin-bottom:8px;
+    word-break:break-word;
+  }
+  .card .card-meta{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    font-size:.72rem;
+    color:var(--gris);
+  }
+  .card .pilar-badge{
+    background:var(--negro);
+    color:#fff;
+    width:18px;height:18px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    font-size:.68rem;
+  }
+  .card .plat-badge{
+    border:1px solid #c9c7c3;
+    border-radius:4px;
+    padding:1px 5px;
+    font-weight:700;
+  }
+
+  /* ---------- CALENDARIO ---------- */
+  .cal-wrap{padding:12px 16px 100px;max-width:900px;margin:0 auto}
+  .cal-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .cal-nav button{
+    font-family:inherit;
+    font-size:1rem;
+    font-weight:900;
+    background:#fff;
+    border:1px solid var(--negro);
+    border-radius:var(--radio);
+    width:38px;height:38px;
+    cursor:pointer;
+  }
+  .cal-nav button:hover{background:var(--negro);color:#fff}
+  .cal-title{font-weight:900;font-size:1.05rem;text-transform:capitalize}
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+  }
+  .cal-dow{
+    text-align:center;
+    font-weight:900;
+    font-size:.68rem;
+    text-transform:uppercase;
+    color:var(--gris);
+    padding:4px 0;
+  }
+  .cal-day{
+    background:#fff;
+    border-radius:6px;
+    min-height:64px;
+    padding:4px;
+    font-size:.72rem;
+    cursor:pointer;
+    border:1px solid #e2e0dc;
+    overflow:hidden;
+  }
+  .cal-day.empty{background:transparent;border:none;cursor:default}
+  .cal-day.today{border-color:var(--rojo);border-width:2px}
+  .cal-day .daynum{font-weight:700;color:var(--gris)}
+  .cal-day .chip{
+    display:block;
+    color:#fff;
+    border-radius:3px;
+    padding:1px 4px;
+    margin-top:2px;
+    font-size:.62rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* ---------- ANALYTICS ---------- */
+  .an-wrap{padding:16px 16px 100px;max-width:760px;margin:0 auto}
+  .an-block{
+    background:#fff;
+    border-radius:var(--radio);
+    padding:16px;
+    margin-bottom:16px;
+    box-shadow:var(--sombra);
+  }
+  .an-block h3{
+    font-size:.85rem;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color:var(--gris);
+    margin-bottom:12px;
+  }
+  .bar-row{margin-bottom:10px}
+  .bar-row .bar-label{
+    font-size:.78rem;
+    font-weight:700;
+    margin-bottom:3px;
+    display:flex;
+    justify-content:space-between;
+  }
+  .bar-track{background:#e9e7e3;border-radius:20px;height:16px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:20px;background:var(--rojo);min-width:2px}
+  .an-stat-big{font-size:2.4rem;font-weight:900;color:var(--rojo);line-height:1}
+  .an-stat-sub{font-size:.8rem;color:var(--gris);margin-top:4px}
+  .an-table{width:100%;border-collapse:collapse;font-size:.8rem}
+  .an-table th,.an-table td{text-align:left;padding:6px 4px;border-bottom:1px solid #eee}
+  .an-table th{font-weight:900;color:var(--gris);text-transform:uppercase;font-size:.68rem}
+  .an-empty{color:#9a9894;font-style:italic;font-size:.85rem}
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:fixed;
+    right:18px;
+    bottom:18px;
+    width:56px;height:56px;
+    border-radius:50%;
+    background:var(--rojo);
+    color:#fff;
+    border:none;
+    font-size:2rem;
+    font-weight:300;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(157,31,34,.45);
+    z-index:45;
+  }
+  .fab:hover{background:#7d1719}
+
+  /* ---------- PANEL LATERAL ---------- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(17,21,25,.5);
+    z-index:50;
+    display:none;
+  }
+  .overlay.open{display:block}
+  .panel{
+    position:fixed;
+    top:0;right:0;
+    height:100%;
+    width:100%;
+    max-width:420px;
+    background:var(--crema);
+    z-index:55;
+    transform:translateX(100%);
+    transition:transform .22s ease;
+    display:flex;
+    flex-direction:column;
+    box-shadow:-4px 0 20px rgba(0,0,0,.25);
+  }
+  .panel.open{transform:translateX(0)}
+  .panel-head{
+    background:var(--negro);
+    color:#fff;
+    padding:14px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel-head h2{font-size:1rem;font-weight:900}
+  .panel-head button{
+    background:transparent;border:none;color:#fff;
+    font-size:1.5rem;cursor:pointer;line-height:1;
+  }
+  .panel-body{padding:16px;overflow-y:auto;flex:1}
+  .field{margin-bottom:14px}
+  .field label{
+    display:block;
+    font-size:.75rem;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+    color:var(--gris);
+    margin-bottom:4px;
+  }
+  .field input,.field select,.field textarea{
+    width:100%;
+    font-family:inherit;
+    font-size:.9rem;
+    padding:9px 10px;
+    border:1px solid #d4d2ce;
+    border-radius:var(--radio);
+    background:#fff;
+    color:var(--negro);
+  }
+  .field textarea{resize:vertical}
+  .field textarea.small{min-height:56px}
+  .field textarea.large{min-height:130px}
+  .field-row{display:flex;gap:10px}
+  .field-row .field{flex:1}
+  .panel-actions{
+    padding:14px 16px;
+    display:flex;
+    gap:8px;
+    border-top:1px solid #d4d2ce;
+    background:var(--crema);
+  }
+  .panel-actions .btn{flex:1}
+  .btn-danger{border-color:var(--rojo);color:var(--rojo)}
+  .btn-danger:hover{background:var(--rojo);color:#fff}
+  .hidden{display:none !important}
+
+  /* ---------- MODAL DÍA ---------- */
+  .daymodal{
+    position:fixed;
+    inset:0;
+    z-index:60;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(17,21,25,.5);
+  }
+  .daymodal.open{display:flex}
+  .daymodal-inner{
+    background:var(--crema);
+    border-radius:var(--radio);
+    max-width:380px;
+    width:100%;
+    max-height:80vh;
+    overflow-y:auto;
+  }
+  .daymodal-inner h3{
+    background:var(--negro);color:#fff;
+    padding:12px 16px;font-size:.95rem;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .daymodal-inner h3 button{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer}
+  .daymodal-list{padding:12px 16px}
+  .daymodal-list .card{margin-bottom:8px;cursor:pointer}
+  .daymodal-list .an-empty{padding:8px 0}
+
+  @media(min-width:700px){
+    header h1{font-size:1.35rem}
+    .tab{font-size:1rem}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ROIS · Planeador de Contenido</h1>
+  <nav class="tabs">
+    <button class="tab active" data-view="kanban">Kanban</button>
+    <button class="tab" data-view="calendario">Calendario</button>
+    <button class="tab" data-view="analytics">Analytics</button>
+  </nav>
+</header>
+
+<!-- ============ KANBAN ============ -->
+<section class="view active" id="view-kanban">
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Buscar por título o hook…">
+    <select id="filter-pilar">
+      <option value="">Todos los pilares</option>
+      <option value="1">1 · En el Campo</option>
+      <option value="2">2 · Las Grandes Mentes</option>
+      <option value="3">3 · Tiempo Real</option>
+      <option value="4">4 · Videos IA</option>
+    </select>
+    <select id="filter-tipo">
+      <option value="">Todos los tipos</option>
+    </select>
+    <button class="btn" id="btn-export">Exportar JSON</button>
+    <button class="btn" id="btn-import">Importar JSON</button>
+    <input type="file" id="import-file" accept="application/json" class="hidden">
+  </div>
+  <div id="kanban-cols"></div>
+</section>
+
+<!-- ============ CALENDARIO ============ -->
+<section class="view" id="view-calendario">
+  <div class="cal-wrap">
+    <div class="cal-nav">
+      <button id="cal-prev">‹</button>
+      <span class="cal-title" id="cal-title"></span>
+      <button id="cal-next">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+</section>
+
+<!-- ============ ANALYTICS ============ -->
+<section class="view" id="view-analytics">
+  <div class="an-wrap" id="an-wrap"></div>
+</section>
+
+<button class="fab" id="fab" title="Agregar pieza">+</button>
+
+<!-- ============ PANEL LATERAL ============ -->
+<div class="overlay" id="overlay"></div>
+<aside class="panel" id="panel">
+  <div class="panel-head">
+    <h2 id="panel-title">Nueva pieza</h2>
+    <button id="panel-close" title="Cerrar">×</button>
+  </div>
+  <div class="panel-body">
+    <form id="piece-form" autocomplete="off">
+      <input type="hidden" id="f-id">
+      <div class="field">
+        <label for="f-titulo">Título / concepto</label>
+        <input type="text" id="f-titulo" required placeholder="Gancho corto o concepto">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-tipo">Tipo de contenido</label>
+          <select id="f-tipo" required></select>
+        </div>
+        <div class="field">
+          <label for="f-pilar">Pilar</label>
+          <select id="f-pilar" required>
+            <option value="1">1 · En el Campo</option>
+            <option value="2">2 · Las Grandes Mentes</option>
+            <option value="3">3 · Tiempo Real</option>
+            <option value="4">4 · Videos IA</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-plataforma">Plataforma</label>
+          <select id="f-plataforma" required>
+            <option value="instagram">Instagram</option>
+            <option value="facebook">Facebook</option>
+            <option value="ambas">Ambas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-status">Status</label>
+          <select id="f-status" required></select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-hook">Hook (primera frase)</label>
+        <textarea id="f-hook" class="small" placeholder="La primera línea del video / post"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-cta">CTA</label>
+          <select id="f-cta">
+            <option value="ninguno">Ninguno</option>
+            <option value="keyword">Keyword</option>
+            <option value="debate">Debate</option>
+            <option value="deliverable_caption">Deliverable en caption</option>
+          </select>
+        </div>
+        <div class="field" id="field-keyword">
+          <label for="f-keyword">Keyword</label>
+          <input type="text" id="f-keyword" placeholder="Palabra clave del CTA">
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-caption">Caption</label>
+        <textarea id="f-caption" class="large" placeholder="Texto del post…"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-fechaPlaneada">Fecha planeada</label>
+          <input type="date" id="f-fechaPlaneada">
+        </div>
+        <div class="field">
+          <label for="f-fechaPublicado">Fecha publicado</label>
+          <input type="date" id="f-fechaPublicado">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-likes">Likes</label>
+          <input type="number" id="f-likes" min="0" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="f-compartidos">Compartidos</label>
+          <input type="number" id="f-compartidos" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-notas">Notas</label>
+        <textarea id="f-notas" class="small" placeholder="Notas internas…"></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="panel-actions">
+    <button class="btn btn-danger hidden" id="btn-delete" type="button">Eliminar</button>
+    <button class="btn" id="btn-cancel" type="button">Cancelar</button>
+    <button class="btn btn-rojo" id="btn-save" type="button">Guardar</button>
+  </div>
+</aside>
+
+<!-- ============ MODAL DÍA ============ -->
+<div class="daymodal" id="daymodal">
+  <div class="daymodal-inner">
+    <h3><span id="daymodal-title">Día</span><button id="daymodal-close">×</button></h3>
+    <div class="daymodal-list" id="daymodal-list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- CONSTANTES ---------- */
+  var STORAGE_KEY = "rois_planner_v1";
+
+  var TIPOS = [
+    "Lista contrarian",
+    "Hook + deliverable en caption",
+    "Story narrativa",
+    "Película + cita de negocio",
+    "Carrusel tipográfico"
+  ];
+
+  var TIPO_COLOR = {
+    "Lista contrarian": "#9D1F22",
+    "Hook + deliverable en caption": "#1a5c2a",
+    "Story narrativa": "#1a3a5c",
+    "Película + cita de negocio": "#4a1a5c",
+    "Carrusel tipográfico": "#7a3a0a"
+  };
+
+  var TIPO_CORTO = {
+    "Lista contrarian": "Lista contrarian",
+    "Hook + deliverable en caption": "Hook + deliverable",
+    "Story narrativa": "Story narrativa",
+    "Película + cita de negocio": "Película + cita",
+    "Carrusel tipográfico": "Carrusel tipográfico"
+  };
+
+  var PILARES = {
+    "1": "En el Campo",
+    "2": "Las Grandes Mentes",
+    "3": "Tiempo Real",
+    "4": "Videos IA"
+  };
+
+  var STATUS = ["idea", "guión listo", "grabado/diseñado", "editado", "programado", "publicado"];
+
+  var PLAT_LABEL = { instagram: "IG", facebook: "FB", ambas: "IG · FB" };
+
+  /* ---------- ESTADO ---------- */
+  var pieces = [];
+  var filters = { search: "", pilar: "", tipo: "" };
+  var calDate = new Date();
+  calDate.setDate(1);
+
+  /* ---------- UTIL ---------- */
+  function $(sel, ctx){ return (ctx || document).querySelector(sel); }
+  function $all(sel, ctx){ return Array.prototype.slice.call((ctx || document).querySelectorAll(sel)); }
+
+  function esc(str){
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function todayStr(){
+    var d = new Date();
+    return isoFromParts(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+
+  function isoFromParts(y, m, d){
+    return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  }
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if(!Array.isArray(arr)) arr = [];
+      pieces = arr.map(normalize);
+    }catch(e){
+      console.error("Error al leer localStorage:", e);
+      pieces = [];
+    }
+  }
+
+  function save(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pieces));
+    }catch(e){
+      console.error("Error al guardar en localStorage:", e);
+      alert("No se pudo guardar en el navegador.");
+    }
+  }
+
+  function normalize(p){
+    p = p || {};
+    return {
+      id: p.id || Date.now(),
+      titulo: p.titulo || "",
+      tipo: TIPOS.indexOf(p.tipo) >= 0 ? p.tipo : TIPOS[0],
+      pilar: PILARES[String(p.pilar)] ? String(p.pilar) : "1",
+      plataforma: ["instagram", "facebook", "ambas"].indexOf(p.plataforma) >= 0 ? p.plataforma : "instagram",
+      status: STATUS.indexOf(p.status) >= 0 ? p.status : "idea",
+      hook: p.hook || "",
+      cta: ["keyword", "debate", "ninguno", "deliverable_caption"].indexOf(p.cta) >= 0 ? p.cta : "ninguno",
+      keyword: p.keyword || "",
+      caption: p.caption || "",
+      fechaPlaneada: p.fechaPlaneada || "",
+      fechaPublicado: p.fechaPublicado || "",
+      likes: Number(p.likes) || 0,
+      compartidos: Number(p.compartidos) || 0,
+      notas: p.notas || ""
+    };
+  }
+
+  function getById(id){
+    for(var i = 0; i < pieces.length; i++){
+      if(String(pieces[i].id) === String(id)) return pieces[i];
+    }
+    return null;
+  }
+
+  /* ---------- NAVEGACIÓN DE PESTAÑAS ---------- */
+  function switchView(name){
+    $all(".tab").forEach(function(t){
+      t.classList.toggle("active", t.dataset.view === name);
+    });
+    $all(".view").forEach(function(v){
+      v.classList.toggle("active", v.id === "view-" + name);
+    });
+    if(name === "kanban") renderKanban();
+    else if(name === "calendario") renderCalendar();
+    else if(name === "analytics") renderAnalytics();
+  }
+
+  $all(".tab").forEach(function(t){
+    t.addEventListener("click", function(){ switchView(t.dataset.view); });
+  });
+
+  /* ---------- KANBAN ---------- */
+  function pieceMatchesFilters(p){
+    if(filters.pilar && p.pilar !== filters.pilar) return false;
+    if(filters.tipo && p.tipo !== filters.tipo) return false;
+    if(filters.search){
+      var q = filters.search.toLowerCase();
+      var hay = (p.titulo + " " + p.hook).toLowerCase();
+      if(hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  }
+
+  function renderKanban(){
+    var cont = $("#kanban-cols");
+    cont.innerHTML = "";
+    var visible = pieces.filter(pieceMatchesFilters);
+
+    STATUS.forEach(function(st){
+      var col = document.createElement("div");
+      col.className = "col";
+      var inCol = visible.filter(function(p){ return p.status === st; });
+
+      var head = document.createElement("div");
+      head.className = "col-head";
+      head.innerHTML = "<span>" + esc(st) + "</span><span class='count'>" + inCol.length + "</span>";
+      col.appendChild(head);
+
+      var body = document.createElement("div");
+      body.className = "col-body";
+      body.dataset.status = st;
+
+      if(inCol.length === 0){
+        var em = document.createElement("div");
+        em.className = "empty-msg";
+        em.textContent = "Sin piezas aquí todavía.";
+        body.appendChild(em);
+      }else{
+        inCol.forEach(function(p){ body.appendChild(buildCard(p)); });
+      }
+
+      body.addEventListener("dragover", function(e){
+        e.preventDefault();
+        body.classList.add("drag-over");
+      });
+      body.addEventListener("dragleave", function(){
+        body.classList.remove("drag-over");
+      });
+      body.addEventListener("drop", function(e){
+        e.preventDefault();
+        body.classList.remove("drag-over");
+        var id = e.dataTransfer.getData("text/plain");
+        var p = getById(id);
+        if(p && p.status !== st){
+          p.status = st;
+          if(st === "publicado" && !p.fechaPublicado){
+            p.fechaPublicado = todayStr();
+          }
+          save();
+          renderKanban();
+        }
+      });
+
+      col.appendChild(body);
+      cont.appendChild(col);
+    });
+  }
+
+  function buildCard(p){
+    var card = document.createElement("div");
+    card.className = "card";
+    card.draggable = true;
+    card.dataset.id = p.id;
+    card.style.borderLeftColor = TIPO_COLOR[p.tipo];
+
+    var fecha = p.fechaPlaneada ? p.fechaPlaneada : (p.fechaPublicado || "sin fecha");
+
+    card.innerHTML =
+      "<span class='tipo-tag' style='background:" + TIPO_COLOR[p.tipo] + "'>" + esc(TIPO_CORTO[p.tipo]) + "</span>" +
+      "<div class='card-title'>" + esc(p.titulo || "(sin título)") + "</div>" +
+      "<div class='card-meta'>" +
+        "<span class='pilar-badge' title='" + esc(PILARES[p.pilar]) + "'>" + esc(p.pilar) + "</span>" +
+        "<span class='plat-badge'>" + esc(PLAT_LABEL[p.plataforma]) + "</span>" +
+        "<span>" + esc(fecha) + "</span>" +
+      "</div>";
+
+    card.addEventListener("dragstart", function(e){
+      e.dataTransfer.setData("text/plain", String(p.id));
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", function(){
+      card.classList.remove("dragging");
+    });
+    card.addEventListener("click", function(){ openPanel(p.id); });
+
+    return card;
+  }
+
+  /* filtros */
+  $("#search").addEventListener("input", function(e){
+    filters.search = e.target.value.trim();
+    renderKanban();
+  });
+  $("#filter-pilar").addEventListener("change", function(e){
+    filters.pilar = e.target.value;
+    renderKanban();
+  });
+  $("#filter-tipo").addEventListener("change", function(e){
+    filters.tipo = e.target.value;
+    renderKanban();
+  });
+
+  /* ---------- CALENDARIO ---------- */
+  function piecesOnDate(iso){
+    return pieces.filter(function(p){
+      return p.fechaPlaneada === iso || p.fechaPublicado === iso;
+    });
+  }
+
+  function renderCalendar(){
+    var y = calDate.getFullYear();
+    var m = calDate.getMonth(); // 0-based
+    var monthNames = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    $("#cal-title").textContent = monthNames[m] + " " + y;
+
+    var grid = $("#cal-grid");
+    grid.innerHTML = "";
+
+    ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].forEach(function(d){
+      var el = document.createElement("div");
+      el.className = "cal-dow";
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    var first = new Date(y, m, 1);
+    var startOffset = (first.getDay() + 6) % 7; // lunes primero
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var today = todayStr();
+
+    for(var i = 0; i < startOffset; i++){
+      var blank = document.createElement("div");
+      blank.className = "cal-day empty";
+      grid.appendChild(blank);
+    }
+
+    for(var day = 1; day <= daysInMonth; day++){
+      var iso = isoFromParts(y, m + 1, day);
+      var cell = document.createElement("div");
+      cell.className = "cal-day" + (iso === today ? " today" : "");
+      cell.dataset.iso = iso;
+
+      var html = "<span class='daynum'>" + day + "</span>";
+      var dayPieces = piecesOnDate(iso);
+      dayPieces.slice(0, 3).forEach(function(p){
+        html += "<span class='chip' style='background:" + TIPO_COLOR[p.tipo] + "'>" + esc(p.titulo || "(sin título)") + "</span>";
+      });
+      if(dayPieces.length > 3){
+        html += "<span class='chip' style='background:#4A4A4A'>+" + (dayPieces.length - 3) + " más</span>";
+      }
+      cell.innerHTML = html;
+
+      cell.addEventListener("click", function(){ openDayModal(this.dataset.iso); });
+      grid.appendChild(cell);
+    }
+  }
+
+  $("#cal-prev").addEventListener("click", function(){
+    calDate.setMonth(calDate.getMonth() - 1);
+    renderCalendar();
+  });
+  $("#cal-next").addEventListener("click", function(){
+    calDate.setMonth(calDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  function openDayModal(iso){
+    var list = $("#daymodal-list");
+    $("#daymodal-title").textContent = iso;
+    list.innerHTML = "";
+    var dayPieces = piecesOnDate(iso);
+    if(dayPieces.length === 0){
+      list.innerHTML = "<div class='an-empty'>Sin piezas este día.</div>";
+    }else{
+      dayPieces.forEach(function(p){
+        var c = buildCard(p);
+        c.draggable = false;
+        list.appendChild(c);
+      });
+    }
+    $("#daymodal").classList.add("open");
+  }
+
+  $("#daymodal-close").addEventListener("click", function(){
+    $("#daymodal").classList.remove("open");
+  });
+  $("#daymodal").addEventListener("click", function(e){
+    if(e.target === this) this.classList.remove("open");
+  });
+
+  /* ---------- ANALYTICS ---------- */
+  function renderAnalytics(){
+    var wrap = $("#an-wrap");
+    var pub = pieces.filter(function(p){ return p.status === "publicado"; });
+
+    if(pub.length === 0){
+      wrap.innerHTML = "<div class='an-block'><div class='an-empty'>Aún no hay piezas publicadas. Mueve una pieza a la columna “publicado” para ver métricas.</div></div>";
+      return;
+    }
+
+    var html = "";
+
+    // Total por tipo
+    html += "<div class='an-block'><h3>Publicado por tipo</h3>";
+    html += barsBlock(countBy(pub, function(p){ return p.tipo; }), TIPOS, function(k){ return TIPO_COLOR[k]; });
+    html += "</div>";
+
+    // Total por pilar
+    html += "<div class='an-block'><h3>Publicado por pilar</h3>";
+    html += barsBlock(
+      countBy(pub, function(p){ return p.pilar; }),
+      ["1","2","3","4"],
+      function(){ return "#9D1F22"; },
+      function(k){ return k + " · " + PILARES[k]; }
+    );
+    html += "</div>";
+
+    // Promedio likes / compartidos por tipo
+    html += "<div class='an-block'><h3>Promedio de likes y compartidos por tipo</h3>";
+    html += "<table class='an-table'><thead><tr><th>Tipo</th><th>Ø Likes</th><th>Ø Compart.</th><th>n</th></tr></thead><tbody>";
+    TIPOS.forEach(function(t){
+      var subset = pub.filter(function(p){ return p.tipo === t; });
+      if(subset.length === 0) return;
+      var avgL = subset.reduce(function(s,p){ return s + p.likes; }, 0) / subset.length;
+      var avgC = subset.reduce(function(s,p){ return s + p.compartidos; }, 0) / subset.length;
+      html += "<tr><td>" + esc(t) + "</td><td>" + avgL.toFixed(1) + "</td><td>" + avgC.toFixed(1) + "</td><td>" + subset.length + "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+
+    // Top 3 compartidos
+    html += "<div class='an-block'><h3>Top 3 · más compartidos</h3>";
+    var top = pub.slice().sort(function(a,b){ return b.compartidos - a.compartidos; }).slice(0, 3);
+    html += "<table class='an-table'><thead><tr><th>Título</th><th>Tipo</th><th>Compart.</th><th>Likes</th></tr></thead><tbody>";
+    top.forEach(function(p){
+      html += "<tr><td>" + esc(p.titulo || "(sin título)") + "</td><td>" + esc(TIPO_CORTO[p.tipo]) + "</td><td>" + p.compartidos + "</td><td>" + p.likes + "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+
+    // Racha actual
+    var racha = currentStreak(pub);
+    html += "<div class='an-block'><h3>Racha actual de publicación</h3>";
+    html += "<div class='an-stat-big'>" + racha + "</div>";
+    html += "<div class='an-stat-sub'>" + (racha === 1 ? "día consecutivo" : "días consecutivos") + " publicando (por fecha de publicación)</div>";
+    html += "</div>";
+
+    wrap.innerHTML = html;
+  }
+
+  function countBy(arr, keyFn){
+    var out = {};
+    arr.forEach(function(x){
+      var k = keyFn(x);
+      out[k] = (out[k] || 0) + 1;
+    });
+    return out;
+  }
+
+  function barsBlock(counts, order, colorFn, labelFn){
+    var max = 0;
+    order.forEach(function(k){ if((counts[k] || 0) > max) max = counts[k] || 0; });
+    if(max === 0) max = 1;
+    var html = "";
+    order.forEach(function(k){
+      var v = counts[k] || 0;
+      if(v === 0) return;
+      var label = labelFn ? labelFn(k) : k;
+      var pct = (v / max) * 100;
+      html += "<div class='bar-row'>" +
+        "<div class='bar-label'><span>" + esc(label) + "</span><span>" + v + "</span></div>" +
+        "<div class='bar-track'><div class='bar-fill' style='width:" + pct + "%;background:" + colorFn(k) + "'></div></div>" +
+        "</div>";
+    });
+    return html || "<div class='an-empty'>Sin datos.</div>";
+  }
+
+  function currentStreak(pub){
+    var days = {};
+    pub.forEach(function(p){
+      if(p.fechaPublicado) days[p.fechaPublicado] = true;
+    });
+    var keys = Object.keys(days);
+    if(keys.length === 0) return 0;
+
+    // Punto de partida: hoy si publicó hoy, si no la fecha más reciente publicada
+    var today = todayStr();
+    var cursor;
+    if(days[today]){
+      cursor = new Date(today + "T00:00:00");
+    }else{
+      keys.sort();
+      var latest = keys[keys.length - 1];
+      cursor = new Date(latest + "T00:00:00");
+    }
+
+    var streak = 0;
+    while(true){
+      var iso = isoFromParts(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate());
+      if(days[iso]){
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      }else{
+        break;
+      }
+    }
+    return streak;
+  }
+
+  /* ---------- PANEL / FORMULARIO ---------- */
+  var overlay = $("#overlay");
+  var panel = $("#panel");
+
+  function fillSelectOptions(){
+    var tipoSel = $("#f-tipo");
+    tipoSel.innerHTML = "";
+    TIPOS.forEach(function(t){
+      var o = document.createElement("option");
+      o.value = t; o.textContent = t;
+      tipoSel.appendChild(o);
+    });
+    var statusSel = $("#f-status");
+    statusSel.innerHTML = "";
+    STATUS.forEach(function(s){
+      var o = document.createElement("option");
+      o.value = s; o.textContent = s;
+      statusSel.appendChild(o);
+    });
+    var filterTipo = $("#filter-tipo");
+    TIPOS.forEach(function(t){
+      var o = document.createElement("option");
+      o.value = t; o.textContent = t;
+      filterTipo.appendChild(o);
+    });
+  }
+
+  function toggleKeywordField(){
+    var show = $("#f-cta").value === "keyword";
+    $("#field-keyword").classList.toggle("hidden", !show);
+  }
+  $("#f-cta").addEventListener("change", toggleKeywordField);
+
+  function openPanel(id){
+    var editing = !!id;
+    var p = editing ? getById(id) : normalize({ id: Date.now() });
+
+    $("#panel-title").textContent = editing ? "Editar pieza" : "Nueva pieza";
+    $("#btn-delete").classList.toggle("hidden", !editing);
+
+    $("#f-id").value = p.id;
+    $("#f-titulo").value = p.titulo;
+    $("#f-tipo").value = p.tipo;
+    $("#f-pilar").value = p.pilar;
+    $("#f-plataforma").value = p.plataforma;
+    $("#f-status").value = p.status;
+    $("#f-hook").value = p.hook;
+    $("#f-cta").value = p.cta;
+    $("#f-keyword").value = p.keyword;
+    $("#f-caption").value = p.caption;
+    $("#f-fechaPlaneada").value = p.fechaPlaneada;
+    $("#f-fechaPublicado").value = p.fechaPublicado;
+    $("#f-likes").value = p.likes || 0;
+    $("#f-compartidos").value = p.compartidos || 0;
+    $("#f-notas").value = p.notas;
+
+    toggleKeywordField();
+
+    overlay.classList.add("open");
+    panel.classList.add("open");
+  }
+
+  function closePanel(){
+    overlay.classList.remove("open");
+    panel.classList.remove("open");
+  }
+
+  function savePanel(){
+    var titulo = $("#f-titulo").value.trim();
+    if(!titulo){
+      alert("El título es obligatorio.");
+      $("#f-titulo").focus();
+      return;
+    }
+    var id = $("#f-id").value;
+    var existing = getById(id);
+    var data = {
+      id: existing ? existing.id : (Number(id) || Date.now()),
+      titulo: titulo,
+      tipo: $("#f-tipo").value,
+      pilar: $("#f-pilar").value,
+      plataforma: $("#f-plataforma").value,
+      status: $("#f-status").value,
+      hook: $("#f-hook").value.trim(),
+      cta: $("#f-cta").value,
+      keyword: $("#f-cta").value === "keyword" ? $("#f-keyword").value.trim() : "",
+      caption: $("#f-caption").value,
+      fechaPlaneada: $("#f-fechaPlaneada").value,
+      fechaPublicado: $("#f-fechaPublicado").value,
+      likes: Number($("#f-likes").value) || 0,
+      compartidos: Number($("#f-compartidos").value) || 0,
+      notas: $("#f-notas").value
+    };
+
+    if(data.status === "publicado" && !data.fechaPublicado){
+      data.fechaPublicado = todayStr();
+    }
+
+    if(existing){
+      var idx = pieces.indexOf(existing);
+      pieces[idx] = normalize(data);
+    }else{
+      pieces.push(normalize(data));
+    }
+    save();
+    closePanel();
+    refreshActiveView();
+  }
+
+  function deletePanel(){
+    var id = $("#f-id").value;
+    var p = getById(id);
+    if(!p) return;
+    if(!confirm("¿Eliminar “" + (p.titulo || "esta pieza") + "”?")) return;
+    pieces = pieces.filter(function(x){ return x !== p; });
+    save();
+    closePanel();
+    refreshActiveView();
+  }
+
+  function refreshActiveView(){
+    var active = $(".view.active");
+    if(!active) return;
+    if(active.id === "view-kanban") renderKanban();
+    else if(active.id === "view-calendario") renderCalendar();
+    else if(active.id === "view-analytics") renderAnalytics();
+  }
+
+  $("#fab").addEventListener("click", function(){ openPanel(null); });
+  $("#panel-close").addEventListener("click", closePanel);
+  $("#btn-cancel").addEventListener("click", closePanel);
+  $("#overlay").addEventListener("click", closePanel);
+  $("#btn-save").addEventListener("click", savePanel);
+  $("#btn-delete").addEventListener("click", deletePanel);
+  $("#piece-form").addEventListener("submit", function(e){ e.preventDefault(); savePanel(); });
+
+  /* ---------- EXPORTAR / IMPORTAR ---------- */
+  $("#btn-export").addEventListener("click", function(){
+    var blob = new Blob([JSON.stringify(pieces, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "rois-planner-" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  $("#btn-import").addEventListener("click", function(){
+    $("#import-file").click();
+  });
+
+  $("#import-file").addEventListener("change", function(e){
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        if(!Array.isArray(data)) throw new Error("El archivo no contiene una lista de piezas.");
+        if(!confirm("Esto reemplazará las " + pieces.length + " piezas actuales por " + data.length + " del archivo. ¿Continuar?")){
+          e.target.value = "";
+          return;
+        }
+        pieces = data.map(normalize);
+        save();
+        refreshActiveView();
+        alert("Importadas " + pieces.length + " piezas.");
+      }catch(err){
+        alert("No se pudo importar: " + err.message);
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  /* ---------- INIT ---------- */
+  fillSelectOptions();
+  load();
+  renderKanban();
+})();
+</script>
+</body>
+</html>
