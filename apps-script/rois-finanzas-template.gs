@@ -34,6 +34,14 @@
  *    el mismo texto que el nombre del acreedor en ⚙️ MI SETUP
  *    columna A (ej. acreedor "Plata Card" → Subcategoría "Plata
  *    Card"). Si no coincide letra por letra, el abono no se resta.
+ *  - Para blindar esa convención: un trigger onEdit (más abajo,
+ *    función onEdit + aplicarValidacionSubcategoria_) pone un
+ *    dropdown en Subcategoría, restringido a los nombres exactos de
+ *    ⚙️ MI SETUP, cada vez que Categoría de esa fila = "Pago deuda".
+ *    Es un trigger simple: no requiere instalación manual, funciona
+ *    en cuanto el script está pegado en la hoja. Solo aplica a
+ *    edición manual en la interfaz; las filas que llegan por el Web
+ *    App (doPost) no pasan por aquí.
  */
 
 const CONFIG = {
@@ -330,6 +338,61 @@ function buildRegistros_(ss) {
       .setRanges([fullRange]).build(),
   ];
   sh.setConditionalFormatRules(rules);
+}
+
+/**
+ * Trigger simple de Sheets: se ejecuta solo cuando el CLIENTE edita
+ * manualmente REGISTROS desde la interfaz (no cuando doPost escribe
+ * filas por API). Si la edición toca la columna E (Categoría) en una
+ * o varias filas, revisa cada fila afectada y ajusta la validación
+ * de Subcategoría (F) según corresponda.
+ */
+function onEdit(e) {
+  try {
+    const range = e.range;
+    const sh = range.getSheet();
+    if (sh.getName() !== CONFIG.SHEETS.REGISTROS) return;
+
+    const firstCol = range.getColumn();
+    const lastCol = firstCol + range.getNumColumns() - 1;
+    const COL_CATEGORIA = 5; // E
+    if (firstCol > COL_CATEGORIA || lastCol < COL_CATEGORIA) return;
+
+    const firstRow = Math.max(range.getRow(), 2);
+    const lastRow = range.getRow() + range.getNumRows() - 1;
+    if (lastRow < 2) return;
+
+    for (let row = firstRow; row <= lastRow; row++) {
+      aplicarValidacionSubcategoria_(sh, row);
+    }
+  } catch (err) {
+    // Nunca interrumpir la edición del cliente por un error aquí.
+  }
+}
+
+/**
+ * Si Categoría (E) de la fila = "Pago deuda", restringe Subcategoría
+ * (F) a un dropdown con los nombres exactos de acreedores en
+ * ⚙️ MI SETUP. En cualquier otro caso, quita esa restricción para
+ * dejar Subcategoría como texto libre.
+ */
+function aplicarValidacionSubcategoria_(sh, row) {
+  const categoria = sh.getRange(row, 5).getValue();
+  const fCell = sh.getRange(row, 6);
+  const ss = sh.getParent();
+  const setupSh = ss.getSheetByName(CONFIG.SHEETS.SETUP);
+  if (!setupSh) return;
+
+  if (categoria === 'Pago deuda') {
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInRange(setupSh.getRange(SETUP_ROWS.deudasStart, 1, CONFIG.CAP.DEUDAS, 1), true)
+      .setAllowInvalid(false)
+      .setHelpText('Debe coincidir exactamente con el nombre del acreedor en ⚙️ MI SETUP para que el abono se reste de la deuda.')
+      .build();
+    fCell.setDataValidation(rule);
+  } else {
+    fCell.clearDataValidations();
+  }
 }
 
 // ============================================================
