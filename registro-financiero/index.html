@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROIS Finanzas — Registro</title>
+<meta name="description" content="Registra ingresos, egresos y cargos directo a tu Sheets de Finanzas ROIS">
+<meta name="theme-color" content="#1A2332">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<style>
+  :root {
+    --navy: #1A2332;
+    --yellow: #F1C40F;
+    --green: #2ECC71;
+    --green-bg: #D5F5E3;
+    --red: #C0392B;
+    --red-bg: #FADBD8;
+    --blue-bg: #D6EAF8;
+    --gray-bg: #ECF0F1;
+    --text: #1A2332;
+    --muted: #7F8C8D;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #F4F6F7;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+    font-weight: 700;
+  }
+  header .sub {
+    font-size: 12px;
+    color: #B9C2CC;
+    margin-top: 2px;
+  }
+  #gearBtn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 8px;
+    line-height: 1;
+  }
+  main {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    margin-bottom: 14px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+  .field { margin-bottom: 14px; }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  select, input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #D5D8DC;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--text);
+    font-family: inherit;
+  }
+  select:focus, input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .type-btn {
+    padding: 12px 8px;
+    border-radius: 10px;
+    border: 2px solid #D5D8DC;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+  }
+  .type-btn[data-tipo="Ingreso"].active { background: var(--green-bg); border-color: var(--green); }
+  .type-btn[data-tipo="Egreso"].active { background: var(--red-bg); border-color: var(--red); }
+  .type-btn[data-tipo="Cargo TC"].active { background: var(--blue-bg); border-color: #2980B9; }
+  .type-btn[data-tipo="Saldo inicial"].active { background: var(--gray-bg); border-color: var(--muted); }
+  #submitBtn {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    background: var(--yellow);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  #submitBtn:disabled { opacity: .6; cursor: default; }
+  .banner {
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .banner.ok { display: block; background: var(--green-bg); color: #1E8449; }
+  .banner.err { display: block; background: var(--red-bg); color: var(--red); }
+  .subcat-warning {
+    display: none;
+    font-size: 12px;
+    color: #8A6D00;
+    background: #FCF3CF;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 6px;
+  }
+  .subcat-warning.show { display: block; }
+
+  /* Modal de configuración */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .modal h2 { font-size: 16px; margin: 0 0 8px; color: var(--navy); }
+  .modal p { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .modal-actions {
+    display: flex; gap: 8px; margin-top: 14px;
+  }
+  .modal-actions button {
+    flex: 1; padding: 12px; border-radius: 10px; border: none;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-secondary { background: #ECF0F1; color: var(--navy); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📊 ROIS Finanzas</h1>
+    <div class="sub" id="urlStatus">Sin configurar</div>
+  </div>
+  <button id="gearBtn" aria-label="Configuración">⚙️</button>
+</header>
+
+<main>
+  <div id="banner" class="banner"></div>
+
+  <form id="regForm" class="card">
+    <div class="field">
+      <label>Tipo</label>
+      <div class="type-grid" id="tipoGrid">
+        <button type="button" class="type-btn" data-tipo="Ingreso">💰 Ingreso</button>
+        <button type="button" class="type-btn" data-tipo="Egreso">💸 Egreso</button>
+        <button type="button" class="type-btn" data-tipo="Cargo TC">💳 Cargo TC</button>
+        <button type="button" class="type-btn" data-tipo="Saldo inicial">🏦 Saldo inicial</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="concepto">Concepto</label>
+      <input type="text" id="concepto" placeholder="Ej. Despensa Walmart" required>
+    </div>
+
+    <div class="field">
+      <label for="categoria">Categoría</label>
+      <select id="categoria" required>
+        <option value="" disabled selected>Selecciona…</option>
+        <option>Ahorro / Donativo</option>
+        <option>SAT Reserva</option>
+        <option>Pago deuda</option>
+        <option>Empresa</option>
+        <option>Alimentación</option>
+        <option>Despensa/Reserva</option>
+        <option>Higiene y limpieza</option>
+        <option>Hogar</option>
+        <option>Transporte</option>
+        <option>Personal</option>
+        <option>Imprevisto</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="subcategoria">Subcategoría <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+      <input type="text" id="subcategoria" placeholder="Ej. Plata Card">
+      <div class="subcat-warning" id="subcatWarning">
+        ⚠️ Si es "Pago deuda", escribe aquí EXACTO el nombre del acreedor tal como aparece en ⚙️ MI SETUP (ej. "Plata Card"), o el abono no se restará de la deuda.
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="monto">Monto</label>
+      <input type="number" id="monto" inputmode="decimal" step="0.01" min="0" placeholder="0.00" required>
+    </div>
+
+    <div class="field">
+      <label for="cuenta">Cuenta</label>
+      <input type="text" id="cuenta" placeholder="Debe coincidir EXACTO con ⚙️ MI SETUP (ej. Nu, BBVA, Efectivo)" required>
+    </div>
+
+    <div class="field">
+      <label for="metodo">Método</label>
+      <select id="metodo" required>
+        <option value="" disabled selected>Selecciona…</option>
+        <option>Transferencia</option>
+        <option>Efectivo</option>
+        <option>Domiciliado</option>
+        <option>Débito</option>
+        <option>SPEI</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="notas">Notas <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+      <textarea id="notas" placeholder="Notas adicionales…"></textarea>
+    </div>
+
+    <button type="submit" id="submitBtn">Registrar</button>
+  </form>
+</main>
+
+<!-- Modal de configuración de URL -->
+<div class="modal-backdrop" id="configModal">
+  <div class="modal">
+    <h2>⚙️ Configura tu Web App</h2>
+    <p>Pega aquí la URL de tu Web App de Apps Script (termina en <code>/exec</code>). Solo se hace una vez; queda guardada en este dispositivo.</p>
+    <input type="text" id="urlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="cancelConfigBtn">Cancelar</button>
+      <button type="button" class="btn-primary" id="saveConfigBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const LS_URL_KEY = 'rois_webapp_url';
+  const LS_CUENTA_KEY = 'rois_last_cuenta';
+  const LS_METODO_KEY = 'rois_last_metodo';
+
+  const $ = (id) => document.getElementById(id);
+  const form = $('regForm');
+  const banner = $('banner');
+  const tipoGrid = $('tipoGrid');
+  const categoriaSel = $('categoria');
+  const subcatWarning = $('subcatWarning');
+  const configModal = $('configModal');
+  const urlInput = $('urlInput');
+  const urlStatus = $('urlStatus');
+  let tipoSeleccionado = '';
+
+  function getWebAppUrl() {
+    return localStorage.getItem(LS_URL_KEY) || '';
+  }
+
+  function setWebAppUrl(url) {
+    localStorage.setItem(LS_URL_KEY, url);
+    refreshUrlStatus();
+  }
+
+  function refreshUrlStatus() {
+    const url = getWebAppUrl();
+    urlStatus.textContent = url ? 'Conectado ✓' : 'Sin configurar — toca ⚙️';
+  }
+
+  function openConfigModal() {
+    urlInput.value = getWebAppUrl();
+    configModal.classList.add('show');
+  }
+
+  function closeConfigModal() {
+    configModal.classList.remove('show');
+  }
+
+  $('gearBtn').addEventListener('click', openConfigModal);
+  $('cancelConfigBtn').addEventListener('click', closeConfigModal);
+  $('saveConfigBtn').addEventListener('click', function () {
+    const val = urlInput.value.trim();
+    if (!val.startsWith('https://script.google.com/')) {
+      alert('La URL debe empezar con https://script.google.com/ y terminar en /exec');
+      return;
+    }
+    setWebAppUrl(val);
+    closeConfigModal();
+  });
+
+  // Selector de Tipo (botones tipo chip)
+  tipoGrid.addEventListener('click', function (e) {
+    const btn = e.target.closest('.type-btn');
+    if (!btn) return;
+    tipoSeleccionado = btn.dataset.tipo;
+    tipoGrid.querySelectorAll('.type-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  // Aviso de Subcategoría cuando Categoría = "Pago deuda"
+  categoriaSel.addEventListener('change', function () {
+    subcatWarning.classList.toggle('show', categoriaSel.value === 'Pago deuda');
+  });
+
+  function showBanner(kind, text) {
+    banner.className = 'banner ' + kind;
+    banner.textContent = text;
+    banner.style.display = 'block';
+  }
+
+  function hideBanner() {
+    banner.style.display = 'none';
+  }
+
+  function todayLocalISO() {
+    const d = new Date();
+    const tzOffsetMs = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+  }
+
+  function restoreLastValues() {
+    const cuenta = localStorage.getItem(LS_CUENTA_KEY);
+    const metodo = localStorage.getItem(LS_METODO_KEY);
+    if (cuenta) $('cuenta').value = cuenta;
+    if (metodo) $('metodo').value = metodo;
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hideBanner();
+
+    const webAppUrl = getWebAppUrl();
+    if (!webAppUrl) {
+      showBanner('err', '⚠️ Primero configura tu Web App tocando el ícono ⚙️ de arriba.');
+      openConfigModal();
+      return;
+    }
+    if (!tipoSeleccionado) {
+      showBanner('err', '⚠️ Selecciona un Tipo (Ingreso, Egreso, Cargo TC o Saldo inicial).');
+      return;
+    }
+
+    const payload = {
+      fecha: todayLocalISO(),
+      tipo: tipoSeleccionado,
+      concepto: $('concepto').value.trim(),
+      categoria: $('categoria').value,
+      subcategoria: $('subcategoria').value.trim(),
+      monto: $('monto').value,
+      cuenta: $('cuenta').value.trim(),
+      metodo: $('metodo').value,
+      notas: $('notas').value.trim(),
+    };
+
+    const submitBtn = $('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enviando…';
+
+    try {
+      const resp = await fetch(webAppUrl, {
+        method: 'POST',
+        // text/plain evita el preflight CORS que Apps Script no puede
+        // responder; el servidor igual hace JSON.parse() del cuerpo.
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+
+      if (data.status === 'ok') {
+        showBanner('ok', '✅ Registrado (fila #' + data.rowNumber + ').');
+        localStorage.setItem(LS_CUENTA_KEY, payload.cuenta);
+        localStorage.setItem(LS_METODO_KEY, payload.metodo);
+        form.reset();
+        tipoSeleccionado = '';
+        tipoGrid.querySelectorAll('.type-btn').forEach((b) => b.classList.remove('active'));
+        subcatWarning.classList.remove('show');
+        restoreLastValues();
+      } else {
+        showBanner('err', '❌ ' + (data.message || 'Error desconocido.'));
+      }
+    } catch (err) {
+      showBanner('err', '❌ No se pudo conectar con el Web App. Revisa tu conexión o la URL configurada.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Registrar';
+    }
+  });
+
+  // Registro del Service Worker (requisito de instalabilidad PWA)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () { /* no crítico */ });
+    });
+  }
+
+  refreshUrlStatus();
+  restoreLastValues();
+  if (!getWebAppUrl()) openConfigModal();
+})();
+</script>
+</body>
+</html>
