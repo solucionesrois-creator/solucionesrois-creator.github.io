@@ -70,7 +70,7 @@ const CONFIG = {
   },
   MAX_ROWS_REGISTROS: 1000,
   CATEGORIAS_PRESUPUESTO: [
-    'Mayordomía', 'SAT Reserva', 'Pago deuda', 'Empresa', 'Alimentación',
+    'Ahorro / Donativo', 'SAT Reserva', 'Pago deuda', 'Empresa', 'Alimentación',
     'Despensa/Reserva', 'Higiene y limpieza', 'Hogar', 'Transporte',
     'Personal', 'Imprevisto',
   ],
@@ -165,7 +165,7 @@ function setColumnHeaders_(range, labels) {
 }
 
 function markYellow_(range) {
-  range.setBackground(CONFIG.COLORS.SETUP_YELLOW);
+  return range.setBackground(CONFIG.COLORS.SETUP_YELLOW);
 }
 
 // ============================================================
@@ -286,8 +286,8 @@ function buildRegistros_(ss) {
   const aFormulas = [], jFormulas = [], kFormulas = [], lFormulas = [], nFormulas = [], pFormulas = [];
   for (let r = 2; r <= maxRows; r++) {
     aFormulas.push([`=IF(B${r}="","",ROW()-1)`]);
-    jFormulas.push([`=IF(C${r}="Ingreso",G${r}*${CONFIG.SHEETS.SETUP}!$B$${SETUP_ROWS.ahorroRow},"")`]);
-    kFormulas.push([`=IF(C${r}="Ingreso",G${r}*${CONFIG.SHEETS.SETUP}!$B$${SETUP_ROWS.satRow},"")`]);
+    jFormulas.push([`=IF(C${r}="Ingreso",G${r}*'${CONFIG.SHEETS.SETUP}'!$B$${SETUP_ROWS.ahorroRow},"")`]);
+    kFormulas.push([`=IF(C${r}="Ingreso",G${r}*'${CONFIG.SHEETS.SETUP}'!$B$${SETUP_ROWS.satRow},"")`]);
     lFormulas.push([`=IF(C${r}="Ingreso",G${r}-N(J${r})-N(K${r}),"")`]);
     nFormulas.push([`=IF(B${r}="","",IF(C${r}="Ingreso","✅ Entrada de efectivo",IF(C${r}="Cargo TC","❌ No — cargo a tarjeta",IF(C${r}="Egreso","💸 Salida de efectivo",""))))`]);
     pFormulas.push([`=IF(B${r}="","",PROPER(TEXT(B${r},"mmmm yyyy")))`]);
@@ -441,7 +441,7 @@ function buildTablas_(ss) {
   for (let i = 0; i < 12; i++) {
     const row = 43 + i;
     sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),-11+${i}),"mmmm yyyy"))`);
-    sh.getRange(row, 2).setFormula(`=${S}!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 2).setFormula(`='${S}'!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Ingreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 4).setFormula(`=IF(B${row}=0,"",C${row}/B${row})`).setNumberFormat('0.0%');
   }
@@ -470,24 +470,20 @@ function buildDeudas_(ss) {
   for (let i = 0; i < n; i++) {
     const row = dataStart + i;
     const setupRow = SETUP_ROWS.deudasStart + i;
-    sh.getRange(row, 1).setFormula(`=${S}!A${setupRow}`); // Acreedor
-    sh.getRange(row, 2).setFormula(`=${S}!B${setupRow}`); // Tipo
-    sh.getRange(row, 3).setFormula(`=${S}!C${setupRow}`).setNumberFormat('$#,##0.00'); // Monto original (baseline)
+    sh.getRange(row, 1).setFormula(`='${S}'!A${setupRow}`); // Acreedor
+    sh.getRange(row, 2).setFormula(`='${S}'!B${setupRow}`); // Tipo
+    sh.getRange(row, 3).setFormula(`='${S}'!C${setupRow}`).setNumberFormat('$#,##0.00'); // Monto original (baseline)
     sh.getRange(row, 4).setFormula(
       `=IF(A${row}="","",MAX(0,C${row}-SUMIFS(${R}!$G:$G,${R}!$C:$C,"Egreso",${R}!$F:$F,A${row})))`
     ).setNumberFormat('$#,##0.00'); // Monto actual = original - abonos registrados (empareja por Subcategoría, no Concepto)
-    sh.getRange(row, 5).setFormula(`=${S}!D${setupRow}`).setNumberFormat('0.000'); // Tasa %
-    sh.getRange(row, 6).setFormula(`=${S}!E${setupRow}`).setNumberFormat('$#,##0.00'); // Pago mensual
+    sh.getRange(row, 5).setFormula(`='${S}'!D${setupRow}`).setNumberFormat('0.000'); // Tasa %
+    sh.getRange(row, 6).setFormula(`='${S}'!E${setupRow}`).setNumberFormat('$#,##0.00'); // Pago mensual
     sh.getRange(row, 7).setFormula(`=IF(A${row}="","",D${row}*E${row}/100)`).setNumberFormat('$#,##0.00'); // Interés mensual
     sh.getRange(row, 8).setFormula(`=IF(A${row}="","",MAX(0,F${row}-G${row}))`).setNumberFormat('$#,##0.00'); // Abono a capital
     sh.getRange(row, 9).setFormula(`=IF(A${row}="","",IF(H${row}<=0,"Sin acuerdo",IF(D${row}<=0,0,ROUNDUP(D${row}/H${row},0))))`); // Meses restantes
     sh.getRange(row, 10).setFormula(`=IF(A${row}="","",IF(ISNUMBER(I${row}),TEXT(EDATE(TODAY(),I${row}),"dd/mm/yyyy"),"—"))`); // Fecha estimada
     sh.getRange(row, 11).setFormula(`=IF(A${row}="","",IF(C${row}=0,0,(C${row}-D${row})/C${row}))`).setNumberFormat('0.0%'); // % Completado
     sh.getRange(row, 12).setFormula(`=IF(A${row}="","",REPT("█",ROUND(K${row}*10,0))&REPT("░",10-ROUND(K${row}*10,0)))`); // Barra
-    if (i === 0) {
-      sh.getRange(row, 13).setValue('Urgente');
-      sh.getRange(row, 14).setValue('Pago activo');
-    }
   }
   sh.getRange(dataStart, 13, n, 1).setDataValidation(
     SpreadsheetApp.newDataValidation().requireValueInList(['Urgente', 'Media', 'Baja'], true).setAllowInvalid(true).build()
@@ -566,10 +562,10 @@ function buildVencimientos_(ss) {
   for (let i = 0; i < n; i++) {
     const row = 3 + i;
     const setupRow = SETUP_ROWS.fijosStart + i;
-    sh.getRange(row, 1).setFormula(`=${S}!A${setupRow}`);
-    sh.getRange(row, 2).setFormula(`=${S}!B${setupRow}`);
-    sh.getRange(row, 3).setFormula(`=${S}!C${setupRow}`).setNumberFormat('$#,##0.00');
-    sh.getRange(row, 4).setFormula(`=${S}!D${setupRow}`);
+    sh.getRange(row, 1).setFormula(`='${S}'!A${setupRow}`);
+    sh.getRange(row, 2).setFormula(`='${S}'!B${setupRow}`);
+    sh.getRange(row, 3).setFormula(`='${S}'!C${setupRow}`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 4).setFormula(`='${S}'!D${setupRow}`);
     // Próx. fecha: si el día de cargo ya pasó este mes, usa el próximo mes
     sh.getRange(row, 6).setFormula(
       `=IF(A${row}="","",IF(B${row}>=DAY(TODAY()),DATE(YEAR(TODAY()),MONTH(TODAY()),B${row}),EDATE(DATE(YEAR(TODAY()),MONTH(TODAY()),B${row}),1)))`
@@ -628,14 +624,14 @@ function buildDashboard_(ss) {
   sh.getRange('A7').setValue('BALANCE NETO').setFontWeight('bold');
   sh.getRange('B7').setFormula('=B5-B6').setNumberFormat('$#,##0.00').setFontWeight('bold');
 
-  // Mayordomía / ahorro / meta
-  setSectionHeader_(sh.getRange(9, 1, 1, 2), '🙏 Mayordomía del mes');
+  // Ahorro / Donativo / meta
+  setSectionHeader_(sh.getRange(9, 1, 1, 2), '🙏 Ahorro / Donativo del mes');
   sh.getRange('A10').setValue('Ahorro generado:');
   sh.getRange('B10').setFormula(`=SUMIFS(${R}!$J:$J,${R}!$P:$P,$B$3)`).setNumberFormat('$#,##0.00');
   sh.getRange('A11').setValue('Reserva SAT:');
   sh.getRange('B11').setFormula(`=SUMIFS(${R}!$K:$K,${R}!$P:$P,$B$3)`).setNumberFormat('$#,##0.00');
   sh.getRange('A12').setValue('Meta de ingreso:');
-  sh.getRange('B12').setFormula(`=${S}!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
+  sh.getRange('B12').setFormula(`='${S}'!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
   sh.getRange('A13').setValue('Cumplimiento de meta:');
   sh.getRange('B13').setFormula('=IF(B12=0,"—",B5/B12)').setNumberFormat('0.0%');
 
@@ -645,9 +641,9 @@ function buildDashboard_(ss) {
   for (let i = 0; i < nCuentas; i++) {
     const row = 16 + i;
     const setupRow = SETUP_ROWS.cuentasStart + i;
-    sh.getRange(row, 1).setFormula(`=${S}!A${setupRow}`);
+    sh.getRange(row, 1).setFormula(`='${S}'!A${setupRow}`);
     sh.getRange(row, 2).setFormula(
-      `=IF(A${row}="","",${S}!C${setupRow}` +
+      `=IF(A${row}="","",'${S}'!C${setupRow}` +
       `+SUMIFS(${R}!$G:$G,${R}!$H:$H,A${row},${R}!$C:$C,"Ingreso")` +
       `-SUMIFS(${R}!$G:$G,${R}!$H:$H,A${row},${R}!$C:$C,"Egreso")` +
       `-SUMIFS(${R}!$G:$G,${R}!$H:$H,A${row},${R}!$C:$C,"Cargo TC"))`
@@ -668,7 +664,7 @@ function buildDashboard_(ss) {
     const row = presRow + 2 + i;
     const setupRow = SETUP_ROWS.presupuestoStart + i;
     sh.getRange(row, 1).setValue(cat);
-    sh.getRange(row, 2).setFormula(`=${S}!B${setupRow}`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 2).setFormula(`='${S}'!B${setupRow}`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(
       `=SUMIFS(${R}!$G:$G,${R}!$E:$E,A${row},${R}!$P:$P,$B$3)`
     ).setNumberFormat('$#,##0.00');
@@ -699,6 +695,13 @@ function buildDashboard_(ss) {
  * Espera un POST con JSON:
  * { fecha, tipo, concepto, categoria, subcategoria, monto, cuenta,
  *   metodo, empresaPersonal, notas }
+ *
+ * fecha: formato "YYYY-MM-DD" (recomendado, ej. "2026-09-16"). Se
+ *   acepta también con hora ("YYYY-MM-DDTHH:mm:ss"), pero solo se usa
+ *   la parte de fecha.
+ * tipo: EXACTO uno de "Ingreso" | "Egreso" | "Cargo TC" | "Saldo inicial".
+ * monto: número (o string numérico, ej. "150.50").
+ *
  * Responde JSON: { status, rowNumber, timestamp } o { status:'error', message }
  */
 function doPost(e) {
@@ -717,19 +720,32 @@ function doPost(e) {
       }
     }
 
+    const tiposValidos = ['Ingreso', 'Egreso', 'Cargo TC', 'Saldo inicial'];
+    if (tiposValidos.indexOf(data.tipo) === -1) {
+      return jsonResponse_({
+        status: 'error',
+        message: 'Tipo inválido: "' + data.tipo + '". Debe ser exactamente uno de: ' + tiposValidos.join(', '),
+      });
+    }
+
+    const monto = Number(data.monto);
+    if (isNaN(monto)) {
+      return jsonResponse_({ status: 'error', message: 'Monto inválido: ' + data.monto });
+    }
+
+    const fecha = parseFechaLocal_(data.fecha);
+    if (!fecha || isNaN(fecha.getTime())) {
+      return jsonResponse_({ status: 'error', message: 'Fecha inválida: ' + data.fecha });
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(CONFIG.SHEETS.REGISTROS);
     const targetRow = findNextEmptyRegistroRow_(sh);
 
-    const fecha = new Date(data.fecha);
-    if (isNaN(fecha.getTime())) {
-      return jsonResponse_({ status: 'error', message: 'Fecha inválida: ' + data.fecha });
-    }
-
     // B..I
     sh.getRange(targetRow, 2, 1, 8).setValues([[
       fecha, data.tipo, data.concepto, data.categoria, data.subcategoria || '',
-      Number(data.monto), data.cuenta, data.metodo,
+      monto, data.cuenta, data.metodo,
     ]]);
     // M Empresa/Personal, O Notas (A, J, K, L, N, P ya son fórmulas precargadas)
     sh.getRange(targetRow, 13).setValue(data.empresaPersonal || 'Personal');
@@ -750,6 +766,23 @@ function doPost(e) {
 /** Ping simple para verificar que el Web App está desplegado. */
 function doGet(e) {
   return jsonResponse_({ status: 'ok', message: 'ROIS Finanzas Web App activo.' });
+}
+
+/**
+ * Convierte "YYYY-MM-DD" (o "YYYY-MM-DDTHH:mm:ss...") a una fecha
+ * LOCAL a medianoche. Evita el bug clásico de new Date("YYYY-MM-DD"),
+ * que interpreta la cadena como UTC y puede correr la fecha un día
+ * hacia atrás en huso horario negativo (ej. México, UTC-6) al
+ * mostrarse en la hoja. Si el texto no trae ese formato, cae a
+ * new Date() normal como respaldo.
+ */
+function parseFechaLocal_(fechaStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fechaStr));
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    return new Date(y, mo - 1, d);
+  }
+  return new Date(fechaStr);
 }
 
 function findNextEmptyRegistroRow_(sh) {
