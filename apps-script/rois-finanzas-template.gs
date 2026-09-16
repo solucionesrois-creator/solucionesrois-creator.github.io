@@ -70,7 +70,7 @@ const CONFIG = {
   },
   MAX_ROWS_REGISTROS: 1000,
   CATEGORIAS_PRESUPUESTO: [
-    'Mayordomía', 'SAT Reserva', 'Pago deuda', 'Empresa', 'Alimentación',
+    'Ahorro / Donativo', 'SAT Reserva', 'Pago deuda', 'Empresa', 'Alimentación',
     'Despensa/Reserva', 'Higiene y limpieza', 'Hogar', 'Transporte',
     'Personal', 'Imprevisto',
   ],
@@ -484,10 +484,6 @@ function buildDeudas_(ss) {
     sh.getRange(row, 10).setFormula(`=IF(A${row}="","",IF(ISNUMBER(I${row}),TEXT(EDATE(TODAY(),I${row}),"dd/mm/yyyy"),"—"))`); // Fecha estimada
     sh.getRange(row, 11).setFormula(`=IF(A${row}="","",IF(C${row}=0,0,(C${row}-D${row})/C${row}))`).setNumberFormat('0.0%'); // % Completado
     sh.getRange(row, 12).setFormula(`=IF(A${row}="","",REPT("█",ROUND(K${row}*10,0))&REPT("░",10-ROUND(K${row}*10,0)))`); // Barra
-    if (i === 0) {
-      sh.getRange(row, 13).setValue('Urgente');
-      sh.getRange(row, 14).setValue('Pago activo');
-    }
   }
   sh.getRange(dataStart, 13, n, 1).setDataValidation(
     SpreadsheetApp.newDataValidation().requireValueInList(['Urgente', 'Media', 'Baja'], true).setAllowInvalid(true).build()
@@ -628,8 +624,8 @@ function buildDashboard_(ss) {
   sh.getRange('A7').setValue('BALANCE NETO').setFontWeight('bold');
   sh.getRange('B7').setFormula('=B5-B6').setNumberFormat('$#,##0.00').setFontWeight('bold');
 
-  // Mayordomía / ahorro / meta
-  setSectionHeader_(sh.getRange(9, 1, 1, 2), '🙏 Mayordomía del mes');
+  // Ahorro / Donativo / meta
+  setSectionHeader_(sh.getRange(9, 1, 1, 2), '🙏 Ahorro / Donativo del mes');
   sh.getRange('A10').setValue('Ahorro generado:');
   sh.getRange('B10').setFormula(`=SUMIFS(${R}!$J:$J,${R}!$P:$P,$B$3)`).setNumberFormat('$#,##0.00');
   sh.getRange('A11').setValue('Reserva SAT:');
