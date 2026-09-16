@@ -165,7 +165,7 @@ function setColumnHeaders_(range, labels) {
 }
 
 function markYellow_(range) {
-  range.setBackground(CONFIG.COLORS.SETUP_YELLOW);
+  return range.setBackground(CONFIG.COLORS.SETUP_YELLOW);
 }
 
 // ============================================================
