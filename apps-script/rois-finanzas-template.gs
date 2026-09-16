@@ -286,8 +286,8 @@ function buildRegistros_(ss) {
   const aFormulas = [], jFormulas = [], kFormulas = [], lFormulas = [], nFormulas = [], pFormulas = [];
   for (let r = 2; r <= maxRows; r++) {
     aFormulas.push([`=IF(B${r}="","",ROW()-1)`]);
-    jFormulas.push([`=IF(C${r}="Ingreso",G${r}*${CONFIG.SHEETS.SETUP}!$B$${SETUP_ROWS.ahorroRow},"")`]);
-    kFormulas.push([`=IF(C${r}="Ingreso",G${r}*${CONFIG.SHEETS.SETUP}!$B$${SETUP_ROWS.satRow},"")`]);
+    jFormulas.push([`=IF(C${r}="Ingreso",G${r}*'${CONFIG.SHEETS.SETUP}'!$B$${SETUP_ROWS.ahorroRow},"")`]);
+    kFormulas.push([`=IF(C${r}="Ingreso",G${r}*'${CONFIG.SHEETS.SETUP}'!$B$${SETUP_ROWS.satRow},"")`]);
     lFormulas.push([`=IF(C${r}="Ingreso",G${r}-N(J${r})-N(K${r}),"")`]);
     nFormulas.push([`=IF(B${r}="","",IF(C${r}="Ingreso","✅ Entrada de efectivo",IF(C${r}="Cargo TC","❌ No — cargo a tarjeta",IF(C${r}="Egreso","💸 Salida de efectivo",""))))`]);
     pFormulas.push([`=IF(B${r}="","",PROPER(TEXT(B${r},"mmmm yyyy")))`]);
@@ -441,7 +441,7 @@ function buildTablas_(ss) {
   for (let i = 0; i < 12; i++) {
     const row = 43 + i;
     sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),-11+${i}),"mmmm yyyy"))`);
-    sh.getRange(row, 2).setFormula(`=${S}!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 2).setFormula(`='${S}'!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Ingreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 4).setFormula(`=IF(B${row}=0,"",C${row}/B${row})`).setNumberFormat('0.0%');
   }
@@ -470,14 +470,14 @@ function buildDeudas_(ss) {
   for (let i = 0; i < n; i++) {
     const row = dataStart + i;
     const setupRow = SETUP_ROWS.deudasStart + i;
-    sh.getRange(row, 1).setFormula(`=${S}!A${setupRow}`); // Acreedor
-    sh.getRange(row, 2).setFormula(`=${S}!B${setupRow}`); // Tipo
-    sh.getRange(row, 3).setFormula(`=${S}!C${setupRow}`).setNumberFormat('$#,##0.00'); // Monto original (baseline)
+    sh.getRange(row, 1).setFormula(`='${S}'!A${setupRow}`); // Acreedor
+    sh.getRange(row, 2).setFormula(`='${S}'!B${setupRow}`); // Tipo
+    sh.getRange(row, 3).setFormula(`='${S}'!C${setupRow}`).setNumberFormat('$#,##0.00'); // Monto original (baseline)
     sh.getRange(row, 4).setFormula(
       `=IF(A${row}="","",MAX(0,C${row}-SUMIFS(${R}!$G:$G,${R}!$C:$C,"Egreso",${R}!$F:$F,A${row})))`
     ).setNumberFormat('$#,##0.00'); // Monto actual = original - abonos registrados (empareja por Subcategoría, no Concepto)
-    sh.getRange(row, 5).setFormula(`=${S}!D${setupRow}`).setNumberFormat('0.000'); // Tasa %
-    sh.getRange(row, 6).setFormula(`=${S}!E${setupRow}`).setNumberFormat('$#,##0.00'); // Pago mensual
+    sh.getRange(row, 5).setFormula(`='${S}'!D${setupRow}`).setNumberFormat('0.000'); // Tasa %
+    sh.getRange(row, 6).setFormula(`='${S}'!E${setupRow}`).setNumberFormat('$#,##0.00'); // Pago mensual
     sh.getRange(row, 7).setFormula(`=IF(A${row}="","",D${row}*E${row}/100)`).setNumberFormat('$#,##0.00'); // Interés mensual
     sh.getRange(row, 8).setFormula(`=IF(A${row}="","",MAX(0,F${row}-G${row}))`).setNumberFormat('$#,##0.00'); // Abono a capital
     sh.getRange(row, 9).setFormula(`=IF(A${row}="","",IF(H${row}<=0,"Sin acuerdo",IF(D${row}<=0,0,ROUNDUP(D${row}/H${row},0))))`); // Meses restantes
@@ -566,10 +566,10 @@ function buildVencimientos_(ss) {
   for (let i = 0; i < n; i++) {
     const row = 3 + i;
     const setupRow = SETUP_ROWS.fijosStart + i;
-    sh.getRange(row, 1).setFormula(`=${S}!A${setupRow}`);
-    sh.getRange(row, 2).setFormula(`=${S}!B${setupRow}`);
-    sh.getRange(row, 3).setFormula(`=${S}!C${setupRow}`).setNumberFormat('$#,##0.00');
-    sh.getRange(row, 4).setFormula(`=${S}!D${setupRow}`);
+    sh.getRange(row, 1).setFormula(`='${S}'!A${setupRow}`);
+    sh.getRange(row, 2).setFormula(`='${S}'!B${setupRow}`);
+    sh.getRange(row, 3).setFormula(`='${S}'!C${setupRow}`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 4).setFormula(`='${S}'!D${setupRow}`);
     // Próx. fecha: si el día de cargo ya pasó este mes, usa el próximo mes
     sh.getRange(row, 6).setFormula(
       `=IF(A${row}="","",IF(B${row}>=DAY(TODAY()),DATE(YEAR(TODAY()),MONTH(TODAY()),B${row}),EDATE(DATE(YEAR(TODAY()),MONTH(TODAY()),B${row}),1)))`
@@ -635,7 +635,7 @@ function buildDashboard_(ss) {
   sh.getRange('A11').setValue('Reserva SAT:');
   sh.getRange('B11').setFormula(`=SUMIFS(${R}!$K:$K,${R}!$P:$P,$B$3)`).setNumberFormat('$#,##0.00');
   sh.getRange('A12').setValue('Meta de ingreso:');
-  sh.getRange('B12').setFormula(`=${S}!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
+  sh.getRange('B12').setFormula(`='${S}'!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
   sh.getRange('A13').setValue('Cumplimiento de meta:');
   sh.getRange('B13').setFormula('=IF(B12=0,"—",B5/B12)').setNumberFormat('0.0%');
 
@@ -645,9 +645,9 @@ function buildDashboard_(ss) {
   for (let i = 0; i < nCuentas; i++) {
     const row = 16 + i;
     const setupRow = SETUP_ROWS.cuentasStart + i;
-    sh.getRange(row, 1).setFormula(`=${S}!A${setupRow}`);
+    sh.getRange(row, 1).setFormula(`='${S}'!A${setupRow}`);
     sh.getRange(row, 2).setFormula(
-      `=IF(A${row}="","",${S}!C${setupRow}` +
+      `=IF(A${row}="","",'${S}'!C${setupRow}` +
       `+SUMIFS(${R}!$G:$G,${R}!$H:$H,A${row},${R}!$C:$C,"Ingreso")` +
       `-SUMIFS(${R}!$G:$G,${R}!$H:$H,A${row},${R}!$C:$C,"Egreso")` +
       `-SUMIFS(${R}!$G:$G,${R}!$H:$H,A${row},${R}!$C:$C,"Cargo TC"))`
@@ -668,7 +668,7 @@ function buildDashboard_(ss) {
     const row = presRow + 2 + i;
     const setupRow = SETUP_ROWS.presupuestoStart + i;
     sh.getRange(row, 1).setValue(cat);
-    sh.getRange(row, 2).setFormula(`=${S}!B${setupRow}`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 2).setFormula(`='${S}'!B${setupRow}`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(
       `=SUMIFS(${R}!$G:$G,${R}!$E:$E,A${row},${R}!$P:$P,$B$3)`
     ).setNumberFormat('$#,##0.00');
