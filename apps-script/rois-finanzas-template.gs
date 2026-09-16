@@ -695,6 +695,13 @@ function buildDashboard_(ss) {
  * Espera un POST con JSON:
  * { fecha, tipo, concepto, categoria, subcategoria, monto, cuenta,
  *   metodo, empresaPersonal, notas }
+ *
+ * fecha: formato "YYYY-MM-DD" (recomendado, ej. "2026-09-16"). Se
+ *   acepta también con hora ("YYYY-MM-DDTHH:mm:ss"), pero solo se usa
+ *   la parte de fecha.
+ * tipo: EXACTO uno de "Ingreso" | "Egreso" | "Cargo TC" | "Saldo inicial".
+ * monto: número (o string numérico, ej. "150.50").
+ *
  * Responde JSON: { status, rowNumber, timestamp } o { status:'error', message }
  */
 function doPost(e) {
@@ -713,19 +720,32 @@ function doPost(e) {
       }
     }
 
+    const tiposValidos = ['Ingreso', 'Egreso', 'Cargo TC', 'Saldo inicial'];
+    if (tiposValidos.indexOf(data.tipo) === -1) {
+      return jsonResponse_({
+        status: 'error',
+        message: 'Tipo inválido: "' + data.tipo + '". Debe ser exactamente uno de: ' + tiposValidos.join(', '),
+      });
+    }
+
+    const monto = Number(data.monto);
+    if (isNaN(monto)) {
+      return jsonResponse_({ status: 'error', message: 'Monto inválido: ' + data.monto });
+    }
+
+    const fecha = parseFechaLocal_(data.fecha);
+    if (!fecha || isNaN(fecha.getTime())) {
+      return jsonResponse_({ status: 'error', message: 'Fecha inválida: ' + data.fecha });
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(CONFIG.SHEETS.REGISTROS);
     const targetRow = findNextEmptyRegistroRow_(sh);
 
-    const fecha = new Date(data.fecha);
-    if (isNaN(fecha.getTime())) {
-      return jsonResponse_({ status: 'error', message: 'Fecha inválida: ' + data.fecha });
-    }
-
     // B..I
     sh.getRange(targetRow, 2, 1, 8).setValues([[
       fecha, data.tipo, data.concepto, data.categoria, data.subcategoria || '',
-      Number(data.monto), data.cuenta, data.metodo,
+      monto, data.cuenta, data.metodo,
     ]]);
     // M Empresa/Personal, O Notas (A, J, K, L, N, P ya son fórmulas precargadas)
     sh.getRange(targetRow, 13).setValue(data.empresaPersonal || 'Personal');
@@ -746,6 +766,23 @@ function doPost(e) {
 /** Ping simple para verificar que el Web App está desplegado. */
 function doGet(e) {
   return jsonResponse_({ status: 'ok', message: 'ROIS Finanzas Web App activo.' });
+}
+
+/**
+ * Convierte "YYYY-MM-DD" (o "YYYY-MM-DDTHH:mm:ss...") a una fecha
+ * LOCAL a medianoche. Evita el bug clásico de new Date("YYYY-MM-DD"),
+ * que interpreta la cadena como UTC y puede correr la fecha un día
+ * hacia atrás en huso horario negativo (ej. México, UTC-6) al
+ * mostrarse en la hoja. Si el texto no trae ese formato, cae a
+ * new Date() normal como respaldo.
+ */
+function parseFechaLocal_(fechaStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fechaStr));
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    return new Date(y, mo - 1, d);
+  }
+  return new Date(fechaStr);
 }
 
 function findNextEmptyRegistroRow_(sh) {
