@@ -117,6 +117,7 @@ function procesarPendientes() {
       if (estado !== '' && estado !== 'pendiente') continue;
 
       const cliente = parseClienteForm_(row, idx, form.origen);
+      Logger.log('DEBUG cliente parseado: ' + JSON.stringify(cliente));
       const resultado = onboardCliente_(cliente);
       resumen.push(resultado);
 
