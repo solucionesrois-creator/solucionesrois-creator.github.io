@@ -161,7 +161,9 @@ function parseClienteForm_(row, idx, origen) {
   const cuentas = splitLista_(row[idx.cuentas]);
   const fijos = splitLista_(row[idx.gastosFijos]);
   const deudas = [];
-  if (String(row[idx.tieneDeudas]).trim().toLowerCase() === 'sí' || String(row[idx.tieneDeudas]).trim().toLowerCase() === 'si') {
+  // Comparación por prefijo, no exacta: el Form guarda la frase completa
+  // de la opción elegida (ej. "Sí, tengo deudas activas"), no solo "Sí".
+  if (String(row[idx.tieneDeudas]).trim().toLowerCase().indexOf('s') === 0) {
     for (let g = 0; g < 5; g++) {
       const base = idx.deuda1Nombre + g * 3;
       const nombre = row[base];
