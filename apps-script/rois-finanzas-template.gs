@@ -1,7 +1,14 @@
 /**
  * ROIS Consultoría — Template base de Finanzas Personales
  * ============================================================
- * Cómo usarlo:
+ * ESTE ARCHIVO ES EL TEMPLATE MAESTRO (bound al Sheet que se clona
+ * para cada cliente nuevo). NO tiene doPost/doGet — el Web App
+ * central vive en apps-script/rois-orchestrator.gs, un proyecto
+ * Apps Script STANDALONE separado que se despliega UNA sola vez para
+ * todos los clientes. Ver ese archivo para onboarding y registro de
+ * transacciones.
+ *
+ * Cómo usarlo (solo aquí, en el template maestro):
  *  1. Crea un Google Sheets en blanco (o duplica uno vacío).
  *  2. Extensiones → Apps Script. Borra el contenido de Code.gs y pega
  *     este archivo completo.
@@ -10,8 +17,9 @@
  *     permisos que pida (es tu propia hoja).
  *  4. Revisa el resultado: 6 hojas creadas, formato aplicado,
  *     fórmulas conectadas.
- *  5. Para el Web App (recibir datos del Apple Shortcut), sigue las
- *     instrucciones de despliegue al final de este archivo.
+ *  5. NO despliegues Web App aquí. El Orchestrator clona este archivo
+ *     tal cual (con su script bound, incluyendo el trigger onEdit) y
+ *     llena ⚙️ MI SETUP directamente vía procesarPendientes().
  *
  * Decisiones de diseño (para que Daniel las conozca):
  *  - Capacidad fija: 6 cuentas, 8 deudas, 12 servicios fijos por
@@ -687,143 +695,12 @@ function buildDashboard_(ss) {
   sh.setFrozenRows(3);
 }
 
-// ============================================================
-// WEB APP — recibe transacciones desde el Apple Shortcut
-// ============================================================
-
-/**
- * Espera un POST con JSON:
- * { fecha, tipo, concepto, categoria, subcategoria, monto, cuenta,
- *   metodo, empresaPersonal, notas }
- *
- * fecha: formato "YYYY-MM-DD" (recomendado, ej. "2026-09-16"). Se
- *   acepta también con hora ("YYYY-MM-DDTHH:mm:ss"), pero solo se usa
- *   la parte de fecha.
- * tipo: EXACTO uno de "Ingreso" | "Egreso" | "Cargo TC" | "Saldo inicial".
- * monto: número (o string numérico, ej. "150.50").
- *
- * Responde JSON: { status, rowNumber, timestamp } o { status:'error', message }
- */
-function doPost(e) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    if (!e || !e.postData || !e.postData.contents) {
-      return jsonResponse_({ status: 'error', message: 'Sin cuerpo en la petición.' });
-    }
-    const data = JSON.parse(e.postData.contents);
-
-    const required = ['fecha', 'tipo', 'concepto', 'categoria', 'monto', 'cuenta', 'metodo'];
-    for (const key of required) {
-      if (data[key] === undefined || data[key] === null || data[key] === '') {
-        return jsonResponse_({ status: 'error', message: 'Falta el campo: ' + key });
-      }
-    }
-
-    const tiposValidos = ['Ingreso', 'Egreso', 'Cargo TC', 'Saldo inicial'];
-    if (tiposValidos.indexOf(data.tipo) === -1) {
-      return jsonResponse_({
-        status: 'error',
-        message: 'Tipo inválido: "' + data.tipo + '". Debe ser exactamente uno de: ' + tiposValidos.join(', '),
-      });
-    }
-
-    const monto = Number(data.monto);
-    if (isNaN(monto)) {
-      return jsonResponse_({ status: 'error', message: 'Monto inválido: ' + data.monto });
-    }
-
-    const fecha = parseFechaLocal_(data.fecha);
-    if (!fecha || isNaN(fecha.getTime())) {
-      return jsonResponse_({ status: 'error', message: 'Fecha inválida: ' + data.fecha });
-    }
-
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sh = ss.getSheetByName(CONFIG.SHEETS.REGISTROS);
-    const targetRow = findNextEmptyRegistroRow_(sh);
-
-    // B..I
-    sh.getRange(targetRow, 2, 1, 8).setValues([[
-      fecha, data.tipo, data.concepto, data.categoria, data.subcategoria || '',
-      monto, data.cuenta, data.metodo,
-    ]]);
-    // M Empresa/Personal, O Notas (A, J, K, L, N, P ya son fórmulas precargadas)
-    sh.getRange(targetRow, 13).setValue(data.empresaPersonal || 'Personal');
-    sh.getRange(targetRow, 15).setValue(data.notas || '');
-
-    return jsonResponse_({
-      status: 'ok',
-      rowNumber: targetRow,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (err) {
-    return jsonResponse_({ status: 'error', message: String(err) });
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-/** Ping simple para verificar que el Web App está desplegado. */
-function doGet(e) {
-  return jsonResponse_({ status: 'ok', message: 'ROIS Finanzas Web App activo.' });
-}
-
-/**
- * Convierte "YYYY-MM-DD" (o "YYYY-MM-DDTHH:mm:ss...") a una fecha
- * LOCAL a medianoche. Evita el bug clásico de new Date("YYYY-MM-DD"),
- * que interpreta la cadena como UTC y puede correr la fecha un día
- * hacia atrás en huso horario negativo (ej. México, UTC-6) al
- * mostrarse en la hoja. Si el texto no trae ese formato, cae a
- * new Date() normal como respaldo.
- */
-function parseFechaLocal_(fechaStr) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fechaStr));
-  if (m) {
-    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-    return new Date(y, mo - 1, d);
-  }
-  return new Date(fechaStr);
-}
-
-function findNextEmptyRegistroRow_(sh) {
-  const maxRows = CONFIG.MAX_ROWS_REGISTROS;
-  const fechas = sh.getRange(2, 2, maxRows - 1, 1).getValues();
-  for (let i = 0; i < fechas.length; i++) {
-    if (fechas[i][0] === '' || fechas[i][0] === null) return i + 2;
-  }
-  throw new Error('REGISTROS lleno (' + maxRows + ' filas). Amplía MAX_ROWS_REGISTROS y vuelve a ejecutar construirTemplateROIS, o inserta filas manualmente copiando las fórmulas de la última fila.');
-}
-
-function jsonResponse_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-}
-
 /**
  * ============================================================
- * DESPLIEGUE DEL WEB APP (hazlo una sola vez por cliente, después
- * de ejecutar construirTemplateROIS):
+ * Este template YA NO expone doPost/doGet ni Web App propio.
+ * El registro de transacciones y el onboarding de clientes nuevos
+ * se manejan desde el proyecto standalone
+ * apps-script/rois-orchestrator.gs (un solo despliegue para todos
+ * los clientes). No implementes Web App desde este archivo.
  * ============================================================
- *
- * 1. En el editor de Apps Script: Implementar → Nueva implementación.
- * 2. Tipo de implementación: selecciona "Aplicación web" (ícono de
- *    engrane si no aparece directo).
- * 3. Descripción: "ROIS Finanzas - Web App v1".
- * 4. "Ejecutar como": Yo (tu cuenta, la dueña de la hoja).
- * 5. "Quién tiene acceso": "Cualquier usuario" (necesario para que
- *    el Apple Shortcut pueda hacer POST sin login interactivo).
- * 6. Clic en Implementar. Autoriza permisos si te lo pide de nuevo.
- * 7. Copia la "URL de la aplicación web" — termina en /exec.
- *    Esa es la URL que va en el Apple Shortcut (acción "Obtener
- *    contenido de URL", método POST, cuerpo JSON con los campos:
- *    fecha, tipo, concepto, categoria, subcategoria, monto, cuenta,
- *    metodo, empresaPersonal, notas).
- * 8. Prueba primero con el navegador abriendo la URL /exec — debe
- *    responder {"status":"ok","message":"ROIS Finanzas Web App activo."}
- *    (eso confirma que el doGet quedó bien desplegado).
- * 9. Prueba el POST real desde el Shortcut o desde curl/Postman
- *    antes de dárselo al cliente.
- * 10. Si vuelves a editar el script (Code.gs), los cambios NO se
- *     reflejan en la URL ya desplegada hasta que hagas Implementar →
- *     Administrar implementaciones → ✏️ (editar) → Nueva versión →
- *     Implementar. La URL /exec se mantiene igual entre versiones.
  */

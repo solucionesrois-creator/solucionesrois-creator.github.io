@@ -270,12 +270,20 @@
   </form>
 </main>
 
-<!-- Modal de configuración de URL -->
+<!-- Modal de configuración (respaldo manual — normalmente sheetId/token
+     llegan solos desde el link personalizado que comparte ROIS) -->
 <div class="modal-backdrop" id="configModal">
   <div class="modal">
-    <h2>⚙️ Configura tu Web App</h2>
-    <p>Pega aquí la URL de tu Web App de Apps Script (termina en <code>/exec</code>). Solo se hace una vez; queda guardada en este dispositivo.</p>
-    <input type="text" id="urlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <h2>⚙️ Configura tu Sheet</h2>
+    <p>Normalmente esto se llena solo al abrir el link que te compartió ROIS. Úsalo solo si necesitas capturarlo a mano.</p>
+    <div class="field">
+      <label for="sheetIdInput">Sheet ID</label>
+      <input type="text" id="sheetIdInput" placeholder="Ej. 1AbC...xyz">
+    </div>
+    <div class="field">
+      <label for="tokenInput">Token</label>
+      <input type="text" id="tokenInput" placeholder="Ej. 8f14e45f-...">
+    </div>
     <div class="modal-actions">
       <button type="button" class="btn-secondary" id="cancelConfigBtn">Cancelar</button>
       <button type="button" class="btn-primary" id="saveConfigBtn">Guardar</button>
@@ -287,7 +295,13 @@
 (function () {
   'use strict';
 
-  const LS_URL_KEY = 'rois_webapp_url';
+  // Pégala UNA vez, después de desplegar apps-script/rois-orchestrator.gs.
+  // Es la MISMA URL para todos los clientes — el ruteo por cliente lo
+  // hace sheetId+token, no la URL.
+  const WEBAPP_URL = 'https://script.google.com/macros/s/REEMPLAZA_CON_TU_ID/exec';
+
+  const LS_SHEET_ID_KEY = 'rois_sheet_id';
+  const LS_TOKEN_KEY = 'rois_token';
   const LS_CUENTA_KEY = 'rois_last_cuenta';
   const LS_METODO_KEY = 'rois_last_metodo';
 
@@ -298,26 +312,40 @@
   const categoriaSel = $('categoria');
   const subcatWarning = $('subcatWarning');
   const configModal = $('configModal');
-  const urlInput = $('urlInput');
+  const sheetIdInput = $('sheetIdInput');
+  const tokenInput = $('tokenInput');
   const urlStatus = $('urlStatus');
   let tipoSeleccionado = '';
 
-  function getWebAppUrl() {
-    return localStorage.getItem(LS_URL_KEY) || '';
-  }
+  function getSheetId() { return localStorage.getItem(LS_SHEET_ID_KEY) || ''; }
+  function getToken() { return localStorage.getItem(LS_TOKEN_KEY) || ''; }
 
-  function setWebAppUrl(url) {
-    localStorage.setItem(LS_URL_KEY, url);
+  function setCliente(sheetId, token) {
+    localStorage.setItem(LS_SHEET_ID_KEY, sheetId);
+    localStorage.setItem(LS_TOKEN_KEY, token);
     refreshUrlStatus();
   }
 
+  // Si el link trae ?sheetId=...&token=..., se guarda solo — el
+  // cliente nunca captura nada a mano.
+  function importarDesdeQueryString_() {
+    const params = new URLSearchParams(window.location.search);
+    const sheetId = params.get('sheetId');
+    const token = params.get('token');
+    if (sheetId && token) {
+      setCliente(sheetId, token);
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }
+
   function refreshUrlStatus() {
-    const url = getWebAppUrl();
-    urlStatus.textContent = url ? 'Conectado ✓' : 'Sin configurar — toca ⚙️';
+    const configurado = getSheetId() && getToken();
+    urlStatus.textContent = configurado ? 'Conectado ✓' : 'Sin configurar — toca ⚙️';
   }
 
   function openConfigModal() {
-    urlInput.value = getWebAppUrl();
+    sheetIdInput.value = getSheetId();
+    tokenInput.value = getToken();
     configModal.classList.add('show');
   }
 
@@ -328,12 +356,13 @@
   $('gearBtn').addEventListener('click', openConfigModal);
   $('cancelConfigBtn').addEventListener('click', closeConfigModal);
   $('saveConfigBtn').addEventListener('click', function () {
-    const val = urlInput.value.trim();
-    if (!val.startsWith('https://script.google.com/')) {
-      alert('La URL debe empezar con https://script.google.com/ y terminar en /exec');
+    const sheetId = sheetIdInput.value.trim();
+    const token = tokenInput.value.trim();
+    if (!sheetId || !token) {
+      alert('Necesitas Sheet ID y Token — ambos los da ROIS.');
       return;
     }
-    setWebAppUrl(val);
+    setCliente(sheetId, token);
     closeConfigModal();
   });
 
@@ -378,9 +407,10 @@
     e.preventDefault();
     hideBanner();
 
-    const webAppUrl = getWebAppUrl();
-    if (!webAppUrl) {
-      showBanner('err', '⚠️ Primero configura tu Web App tocando el ícono ⚙️ de arriba.');
+    const sheetId = getSheetId();
+    const token = getToken();
+    if (!sheetId || !token) {
+      showBanner('err', '⚠️ Primero configura tu Sheet tocando el ícono ⚙️ de arriba (o abre el link que te compartió ROIS).');
       openConfigModal();
       return;
     }
@@ -390,6 +420,8 @@
     }
 
     const payload = {
+      sheetId: sheetId,
+      token: token,
       fecha: todayLocalISO(),
       tipo: tipoSeleccionado,
       concepto: $('concepto').value.trim(),
@@ -406,7 +438,7 @@
     submitBtn.textContent = 'Enviando…';
 
     try {
-      const resp = await fetch(webAppUrl, {
+      const resp = await fetch(WEBAPP_URL, {
         method: 'POST',
         // text/plain evita el preflight CORS que Apps Script no puede
         // responder; el servidor igual hace JSON.parse() del cuerpo.
@@ -428,7 +460,7 @@
         showBanner('err', '❌ ' + (data.message || 'Error desconocido.'));
       }
     } catch (err) {
-      showBanner('err', '❌ No se pudo conectar con el Web App. Revisa tu conexión o la URL configurada.');
+      showBanner('err', '❌ No se pudo conectar con el Web App. Revisa tu conexión.');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Registrar';
@@ -442,9 +474,10 @@
     });
   }
 
+  importarDesdeQueryString_();
   refreshUrlStatus();
   restoreLastValues();
-  if (!getWebAppUrl()) openConfigModal();
+  if (!getSheetId() || !getToken()) openConfigModal();
 })();
 </script>
 </body>
