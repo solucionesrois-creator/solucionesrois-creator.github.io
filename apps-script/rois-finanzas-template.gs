@@ -1,25 +1,41 @@
 /**
  * ROIS Consultoría — Template base de Finanzas Personales
  * ============================================================
- * ESTE ARCHIVO ES EL TEMPLATE MAESTRO (bound al Sheet que se clona
- * para cada cliente nuevo). NO tiene doPost/doGet — el Web App
- * central vive en apps-script/rois-orchestrator.gs, un proyecto
- * Apps Script STANDALONE separado que se despliega UNA sola vez para
- * todos los clientes. Ver ese archivo para onboarding y registro de
- * transacciones.
+ * ARQUITECTURA "HACER UNA COPIA" (privacidad real, no de procedimiento):
+ * Este archivo SÍ incluye doPost/doGet — a propósito. Cada cliente
+ * despliega su PROPIO Web App desde SU PROPIA copia del Sheet, bajo
+ * SU PROPIA cuenta de Google. ROIS nunca ve sus cifras reales porque
+ * el script nunca corre bajo la cuenta de ROIS para un cliente ya
+ * entregado. Por eso doPost usa SpreadsheetApp.getActiveSpreadsheet()
+ * — nunca un ID fijo ni un ID recibido por parámetro.
  *
- * Cómo usarlo (solo aquí, en el template maestro):
+ * Flujo completo:
+ *  1. El Orchestrator (apps-script/rois-orchestrator.gs) clona este
+ *     template y llena ⚙️ MI SETUP con la estructura del cliente
+ *     (nombres de cuentas/deudas/servicios — nunca montos).
+ *  2. Daniel comparte con el cliente el link "…/copy" de ese archivo
+ *     prellenado (no el link "/edit").
+ *  3. El cliente abre ese link → Google le pide "Hacer una copia" →
+ *     la copia resultante es 100% suya, Daniel pierde acceso.
+ *  4. El cliente (guiado por Daniel en una llamada corta) despliega
+ *     SU PROPIO Web App desde esa copia: Extensiones → Apps Script →
+ *     Implementar → Nueva implementación → Aplicación web →
+ *     Ejecutar como: Yo (el cliente) → Acceso: Cualquier usuario.
+ *  5. Esa URL /exec es solo del cliente. Nunca vuelve a pasar por
+ *     ROIS.
+ *
+ * Cómo usarlo AQUÍ, en el template maestro (antes de clonar):
  *  1. Crea un Google Sheets en blanco (o duplica uno vacío).
  *  2. Extensiones → Apps Script. Borra el contenido de Code.gs y pega
  *     este archivo completo.
  *  3. En el selector de función (arriba, junto a "Depurar") elige
  *     "construirTemplateROIS" y presiona Ejecutar. Autoriza los
  *     permisos que pida (es tu propia hoja).
- *  4. Revisa el resultado: 6 hojas creadas, formato aplicado,
+ *  4. Revisa el resultado: 7 hojas creadas, formato aplicado,
  *     fórmulas conectadas.
- *  5. NO despliegues Web App aquí. El Orchestrator clona este archivo
- *     tal cual (con su script bound, incluyendo el trigger onEdit) y
- *     llena ⚙️ MI SETUP directamente vía procesarPendientes().
+ *  5. NO despliegues Web App en el archivo maestro ni en ningún
+ *     archivo de staging que aún esté en tu Drive — solo se despliega
+ *     DESPUÉS de que el cliente hizo su propia copia, y lo hace él.
  *
  * Decisiones de diseño (para que Daniel las conozca):
  *  - Capacidad fija: 6 cuentas, 8 deudas, 12 servicios fijos por
@@ -70,6 +86,7 @@ const CONFIG = {
   },
   SHEETS: {
     SETUP: '⚙️ MI SETUP',
+    REGISTRAR: '📝 REGISTRAR',
     REGISTROS: 'REGISTROS',
     DASHBOARD: 'DASHBOARD',
     VENCIMIENTOS: 'VENCIMIENTOS',
@@ -77,11 +94,29 @@ const CONFIG = {
     TABLAS: 'TABLAS',
   },
   MAX_ROWS_REGISTROS: 1000,
+  // Estas 11 siempre están activas y son las únicas que se rastrean en
+  // PRESUPUESTO/DASHBOARD (presupuesto vs real). Cambiar esta lista
+  // cambia también esas secciones — no lo hagas sin avisar a Daniel.
   CATEGORIAS_PRESUPUESTO: [
     'Ahorro / Donativo', 'SAT Reserva', 'Pago deuda', 'Empresa', 'Alimentación',
     'Despensa/Reserva', 'Higiene y limpieza', 'Hogar', 'Transporte',
     'Personal', 'Imprevisto',
   ],
+  // Disponibles para categorizar en REGISTROS/📝 REGISTRAR, pero SIN
+  // fila propia en PRESUPUESTO — evita tener que personalizar el
+  // template por cliente solo por esto.
+  CATEGORIAS_OPCIONALES: [
+    'Restaurantes', 'Salud y medicamentos', 'Ropa y calzado', 'Educación y cursos',
+    'Entretenimiento', 'Mascotas', 'Regalos y fechas especiales', 'Viajes',
+    'Cuidado personal', 'Mantenimiento del hogar', 'Ahorro o inversión adicional',
+  ],
+};
+CONFIG.CATEGORIAS_TODAS = CONFIG.CATEGORIAS_PRESUPUESTO.concat(CONFIG.CATEGORIAS_OPCIONALES);
+
+// Filas fijas dentro de 📝 REGISTRAR (columna B tiene los valores).
+const PANEL_ROWS = {
+  fecha: 4, tipo: 5, concepto: 6, categoria: 7, subcategoria: 8,
+  monto: 9, cuenta: 10, metodo: 11, empresaPersonal: 12, notas: 13,
 };
 
 // Filas fijas dentro de ⚙️ MI SETUP — referenciadas por fórmulas en
@@ -113,6 +148,7 @@ function construirTemplateROIS() {
   try { ss.setSpreadsheetLocale('es_MX'); } catch (e) { /* no crítico */ }
 
   buildSetup_(ss);
+  buildRegistrar_(ss);
   buildRegistros_(ss);
   buildTablas_(ss);
   buildDeudas_(ss);
@@ -135,8 +171,9 @@ function construirTemplateROIS() {
 
 function reorderSheets_(ss) {
   const order = [
-    CONFIG.SHEETS.SETUP, CONFIG.SHEETS.REGISTROS, CONFIG.SHEETS.DASHBOARD,
-    CONFIG.SHEETS.VENCIMIENTOS, CONFIG.SHEETS.DEUDAS, CONFIG.SHEETS.TABLAS,
+    CONFIG.SHEETS.SETUP, CONFIG.SHEETS.REGISTRAR, CONFIG.SHEETS.REGISTROS,
+    CONFIG.SHEETS.DASHBOARD, CONFIG.SHEETS.VENCIMIENTOS, CONFIG.SHEETS.DEUDAS,
+    CONFIG.SHEETS.TABLAS,
   ];
   order.forEach((name, i) => {
     const sh = ss.getSheetByName(name);
@@ -273,7 +310,72 @@ function buildSetup_(ss) {
 }
 
 // ============================================================
-// HOJA 2: REGISTROS
+// HOJA 2: 📝 REGISTRAR — captura rápida desde la computadora, sin
+// depender del celular. Se usa junto con el menú ROIS ▸ Registrar
+// movimiento (ver onOpen_/registrarDesdePanel_ más abajo).
+// ============================================================
+function buildRegistrar_(ss) {
+  const sh = getOrCreateSheet_(ss, CONFIG.SHEETS.REGISTRAR);
+  sh.setTabColor('#2ECC71');
+  sh.setColumnWidths(1, 1, 180);
+  sh.setColumnWidths(2, 1, 260);
+
+  sh.getRange('A1:B1').merge()
+    .setValue('📝 Registrar movimiento')
+    .setBackground(CONFIG.COLORS.HEADER_BG).setFontColor(CONFIG.COLORS.HEADER_FG)
+    .setFontWeight('bold').setFontSize(12);
+  sh.getRange('A2:B2').merge()
+    .setValue('Llena los campos y usa el menú ROIS ▸ Registrar movimiento (arriba). No necesitas el celular.')
+    .setFontStyle('italic').setFontColor('#7F8C8D');
+
+  const labels = [
+    [PANEL_ROWS.fecha, 'Fecha'],
+    [PANEL_ROWS.tipo, 'Tipo'],
+    [PANEL_ROWS.concepto, 'Concepto'],
+    [PANEL_ROWS.categoria, 'Categoría'],
+    [PANEL_ROWS.subcategoria, 'Subcategoría (opcional)'],
+    [PANEL_ROWS.monto, 'Monto'],
+    [PANEL_ROWS.cuenta, 'Cuenta'],
+    [PANEL_ROWS.metodo, 'Método'],
+    [PANEL_ROWS.empresaPersonal, 'Empresa/Personal'],
+    [PANEL_ROWS.notas, 'Notas (opcional)'],
+  ];
+  labels.forEach(([row, label]) => sh.getRange(row, 1).setValue(label).setFontWeight('bold'));
+
+  markYellow_(sh.getRange(PANEL_ROWS.fecha, 2)).setValue(new Date()).setNumberFormat('dd/mm/yyyy');
+  markYellow_(sh.getRange(PANEL_ROWS.tipo, 2)).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Ingreso', 'Egreso', 'Cargo TC', 'Saldo inicial'], true)
+      .setAllowInvalid(false).build()
+  );
+  markYellow_(sh.getRange(PANEL_ROWS.concepto, 2));
+  markYellow_(sh.getRange(PANEL_ROWS.categoria, 2)).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.CATEGORIAS_TODAS, true).setAllowInvalid(true).build()
+  );
+  markYellow_(sh.getRange(PANEL_ROWS.subcategoria, 2));
+  markYellow_(sh.getRange(PANEL_ROWS.monto, 2)).setNumberFormat('$#,##0.00');
+
+  const setupSh = ss.getSheetByName(CONFIG.SHEETS.SETUP);
+  markYellow_(sh.getRange(PANEL_ROWS.cuenta, 2)).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInRange(setupSh.getRange(SETUP_ROWS.cuentasStart, 1, CONFIG.CAP.CUENTAS, 1), true)
+      .setAllowInvalid(true).build()
+  );
+  markYellow_(sh.getRange(PANEL_ROWS.metodo, 2)).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Transferencia', 'Efectivo', 'Domiciliado', 'Débito', 'SPEI'], true)
+      .setAllowInvalid(true).build()
+  );
+  markYellow_(sh.getRange(PANEL_ROWS.empresaPersonal, 2)).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireValueInList(['Empresa', 'Personal'], true).setAllowInvalid(true).build()
+  );
+  markYellow_(sh.getRange(PANEL_ROWS.notas, 2));
+
+  sh.setFrozenRows(2);
+}
+
+// ============================================================
+// HOJA 3: REGISTROS
 // ============================================================
 function buildRegistros_(ss) {
   const sh = getOrCreateSheet_(ss, CONFIG.SHEETS.REGISTROS);
@@ -314,6 +416,11 @@ function buildRegistros_(ss) {
     SpreadsheetApp.newDataValidation()
       .requireValueInList(['Ingreso', 'Egreso', 'Cargo TC', 'Saldo inicial'], true)
       .setAllowInvalid(false).build()
+  );
+  sh.getRange(2, 5, maxRows - 1, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(CONFIG.CATEGORIAS_TODAS, true)
+      .setAllowInvalid(true).build()
   );
   const setupSh = ss.getSheetByName(CONFIG.SHEETS.SETUP);
   sh.getRange(2, 8, maxRows - 1, 1).setDataValidation(
@@ -695,12 +802,191 @@ function buildDashboard_(ss) {
   sh.setFrozenRows(3);
 }
 
+// ============================================================
+// MENÚ — botón "Registrar" dentro del propio Sheet (sin celular)
+// ============================================================
+
+/**
+ * Trigger simple: se ejecuta solo cuando el USUARIO (dueño de esta
+ * copia) abre el Sheet en su navegador — nunca durante el clonado
+ * automático del Orchestrator, así que no interfiere con el
+ * onboarding.
+ */
+function onOpen(e) {
+  SpreadsheetApp.getUi()
+    .createMenu('ROIS')
+    .addItem('▶ Registrar movimiento', 'registrarDesdePanel_')
+    .addToUi();
+}
+
+/**
+ * Lee 📝 REGISTRAR, valida y escribe en REGISTROS — misma lógica que
+ * doPost, para que el celular y la computadora nunca diverjan.
+ */
+function registrarDesdePanel_() {
+  const ui = SpreadsheetApp.getUi();
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEETS.REGISTRAR);
+  const datos = {
+    fecha: sh.getRange(PANEL_ROWS.fecha, 2).getValue(),
+    tipo: sh.getRange(PANEL_ROWS.tipo, 2).getValue(),
+    concepto: sh.getRange(PANEL_ROWS.concepto, 2).getValue(),
+    categoria: sh.getRange(PANEL_ROWS.categoria, 2).getValue(),
+    subcategoria: sh.getRange(PANEL_ROWS.subcategoria, 2).getValue(),
+    monto: sh.getRange(PANEL_ROWS.monto, 2).getValue(),
+    cuenta: sh.getRange(PANEL_ROWS.cuenta, 2).getValue(),
+    metodo: sh.getRange(PANEL_ROWS.metodo, 2).getValue(),
+    empresaPersonal: sh.getRange(PANEL_ROWS.empresaPersonal, 2).getValue(),
+    notas: sh.getRange(PANEL_ROWS.notas, 2).getValue(),
+  };
+  try {
+    const targetRow = escribirTransaccion_(datos);
+    sh.getRange(PANEL_ROWS.fecha, 2).setValue(new Date());
+    [PANEL_ROWS.concepto, PANEL_ROWS.categoria, PANEL_ROWS.subcategoria, PANEL_ROWS.monto, PANEL_ROWS.notas]
+      .forEach((row) => sh.getRange(row, 2).clearContent());
+    ui.alert('✅ Registrado en REGISTROS, fila ' + targetRow + '.');
+  } catch (err) {
+    ui.alert('❌ ' + (err && err.message ? err.message : err));
+  }
+}
+
+// ============================================================
+// WEB APP — recibe transacciones desde el celular (PWA/Shortcut).
+// Corre SIEMPRE sobre este mismo Sheet (getActiveSpreadsheet), nunca
+// sobre un ID ajeno — esa es la garantía de privacidad de la
+// arquitectura "Hacer una copia".
+// ============================================================
+
+/**
+ * Valida y escribe una transacción en REGISTROS. Usada tanto por
+ * doPost (celular) como por registrarDesdePanel_ (computadora) para
+ * que ambos caminos compartan exactamente la misma regla.
+ * Lanza un Error con mensaje legible si algo no es válido.
+ */
+function escribirTransaccion_(datos) {
+  const required = ['fecha', 'tipo', 'concepto', 'categoria', 'monto', 'cuenta', 'metodo'];
+  for (const key of required) {
+    if (datos[key] === undefined || datos[key] === null || datos[key] === '') {
+      throw new Error('Falta el campo: ' + key);
+    }
+  }
+
+  const tiposValidos = ['Ingreso', 'Egreso', 'Cargo TC', 'Saldo inicial'];
+  if (tiposValidos.indexOf(datos.tipo) === -1) {
+    throw new Error('Tipo inválido: "' + datos.tipo + '". Debe ser exactamente uno de: ' + tiposValidos.join(', '));
+  }
+
+  const monto = Number(datos.monto);
+  if (isNaN(monto)) throw new Error('Monto inválido: ' + datos.monto);
+
+  const fecha = parseFechaLocal_(datos.fecha);
+  if (!fecha || isNaN(fecha.getTime())) throw new Error('Fecha inválida: ' + datos.fecha);
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(CONFIG.SHEETS.REGISTROS);
+  const targetRow = findNextEmptyRegistroRow_(sh);
+
+  // B..I
+  sh.getRange(targetRow, 2, 1, 8).setValues([[
+    fecha, datos.tipo, datos.concepto, datos.categoria, datos.subcategoria || '',
+    monto, datos.cuenta, datos.metodo,
+  ]]);
+  // M Empresa/Personal, O Notas
+  sh.getRange(targetRow, 13).setValue(datos.empresaPersonal || 'Personal');
+  sh.getRange(targetRow, 15).setValue(datos.notas || '');
+
+  return targetRow;
+}
+
+/**
+ * Espera un POST con JSON:
+ * { fecha, tipo, concepto, categoria, subcategoria, monto, cuenta,
+ *   metodo, empresaPersonal, notas }
+ *
+ * fecha: "YYYY-MM-DD" (se acepta con hora, se usa solo la fecha).
+ * tipo: EXACTO uno de "Ingreso" | "Egreso" | "Cargo TC" | "Saldo inicial".
+ * monto: número (o string numérico).
+ *
+ * Responde JSON: { status, rowNumber, timestamp } o { status:'error', message }
+ */
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return jsonResponse_({ status: 'error', message: 'Sin cuerpo en la petición.' });
+    }
+    const data = JSON.parse(e.postData.contents);
+    const targetRow = escribirTransaccion_(data);
+    return jsonResponse_({ status: 'ok', rowNumber: targetRow, timestamp: new Date().toISOString() });
+  } catch (err) {
+    return jsonResponse_({ status: 'error', message: String(err && err.message ? err.message : err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Ping simple para verificar que el Web App está desplegado. */
+function doGet(e) {
+  return jsonResponse_({ status: 'ok', message: 'ROIS Finanzas Web App activo.' });
+}
+
+/**
+ * Convierte "YYYY-MM-DD" (o "YYYY-MM-DDTHH:mm:ss...") a una fecha
+ * LOCAL a medianoche. También acepta un objeto Date directo (lo que
+ * entrega una celda con formato de fecha, ej. desde 📝 REGISTRAR).
+ * Evita el bug clásico de new Date("YYYY-MM-DD"), que interpreta la
+ * cadena como UTC y puede correr la fecha un día hacia atrás en huso
+ * horario negativo (ej. México, UTC-6).
+ */
+function parseFechaLocal_(fechaStr) {
+  if (fechaStr instanceof Date) {
+    return new Date(fechaStr.getFullYear(), fechaStr.getMonth(), fechaStr.getDate());
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fechaStr));
+  if (m) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    return new Date(y, mo - 1, d);
+  }
+  return new Date(fechaStr);
+}
+
+function findNextEmptyRegistroRow_(sh) {
+  const maxRows = CONFIG.MAX_ROWS_REGISTROS;
+  const fechas = sh.getRange(2, 2, maxRows - 1, 1).getValues();
+  for (let i = 0; i < fechas.length; i++) {
+    if (fechas[i][0] === '' || fechas[i][0] === null) return i + 2;
+  }
+  throw new Error('REGISTROS lleno (' + maxRows + ' filas). Amplía MAX_ROWS_REGISTROS y vuelve a ejecutar construirTemplateROIS, o inserta filas manualmente copiando las fórmulas de la última fila.');
+}
+
+function jsonResponse_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
 /**
  * ============================================================
- * Este template YA NO expone doPost/doGet ni Web App propio.
- * El registro de transacciones y el onboarding de clientes nuevos
- * se manejan desde el proyecto standalone
- * apps-script/rois-orchestrator.gs (un solo despliegue para todos
- * los clientes). No implementes Web App desde este archivo.
+ * DESPLIEGUE DEL WEB APP — lo hace EL CLIENTE, en SU copia, UNA vez:
  * ============================================================
+ *
+ * 1. En el editor de Apps Script (Extensiones → Apps Script desde SU
+ *    copia del Sheet): Implementar → Nueva implementación.
+ * 2. Tipo de implementación: "Aplicación web" (ícono de engrane si no
+ *    aparece directo).
+ * 3. Descripción: "ROIS Finanzas - Web App v1".
+ * 4. "Ejecutar como": Yo (la cuenta del cliente — es SU hoja).
+ * 5. "Quién tiene acceso": "Cualquier usuario" (necesario para que
+ *    el celular pueda hacer POST sin login interactivo).
+ * 6. Clic en Implementar. Va a aparecer una pantalla de Google que
+ *    dice "Esta app no está verificada" — es NORMAL y esperado (la
+ *    app es literalmente suya); debe darle clic en "Avanzado" y
+ *    luego en "Ir a [nombre del proyecto] (no seguro)". Adviértele
+ *    esto ANTES de que lo vea, para que no piense que algo salió mal.
+ * 7. Copia la "URL de la aplicación web" — termina en /exec. Esa URL
+ *    solo la tiene el cliente; se pega en su PWA (registro-financiero)
+ *    o en su Shortcut de iPhone.
+ * 8. Prueba abriendo la URL /exec en el navegador — debe responder
+ *    {"status":"ok","message":"ROIS Finanzas Web App activo."}
+ * 9. Si se vuelve a editar el script, los cambios NO se reflejan en
+ *    la URL ya desplegada hasta hacer Implementar → Administrar
+ *    implementaciones → ✏️ → Nueva versión → Implementar.
  */
