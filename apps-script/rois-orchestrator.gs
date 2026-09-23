@@ -7,7 +7,12 @@
  * QUÉ HACE Y QUÉ YA NO HACE (arquitectura "Hacer una copia"):
  * Este Orchestrator SOLO prellena la estructura de cada cliente
  * (nombres de cuentas/deudas/servicios — nunca montos) en una copia
- * de staging que sigue siendo tuya. YA NO tiene doPost ni Web App:
+ * de staging que sigue siendo tuya, y personaliza sus dropdowns de
+ * Categoría (solo sus opcionales del Form) y Subcategoría (nombres
+ * exactos de sus deudas/servicios, para que los abonos/pagos sí se
+ * reflejen en DEUDAS/VENCIMIENTOS). También deja el staging con
+ * "Cualquiera con el enlace puede ver" — sin eso, el link "/copy" no
+ * ofrece copiar, solo pide acceso. YA NO tiene doPost ni Web App:
  * cada cliente despliega su PROPIO Web App desde SU PROPIA copia
  * (ver rois-finanzas-template.gs), así que ROIS nunca vuelve a tocar
  * una transacción real de un cliente ya entregado.
@@ -50,10 +55,25 @@ const CFG = {
     { origen: 'ROIS', sheetId: '1JptDVWURXpBEidUOgHue9xvnR1AwdmuXCI_fciGccVc' },
     { origen: 'Brenda', sheetId: '1Gq0VPhCMAJTf6JLmx2TvMOWlcMxjN6iuEPbWbDg4eWM' },
   ],
-  SHEETS: { SETUP: '⚙️ MI SETUP' },
+  SHEETS: { SETUP: '⚙️ MI SETUP', REGISTROS: 'REGISTROS', REGISTRAR: '📝 REGISTRAR' },
   CAP: { CUENTAS: 6, DEUDAS: 8, FIJOS: 12 },
   SETUP_ROWS: { cuentasStart: 6, deudasStart: 15, fijosStart: 26, ahorroRow: 41 },
   TIPOS_DEUDA_VALIDOS: ['Personal', 'Tarjeta de crédito', 'Préstamo digital', 'Hipotecario', 'Otro'],
+  // Duplicadas del template (proyectos Apps Script separados no
+  // comparten código) — deben cambiar juntas si se editan.
+  CATEGORIAS_PRESUPUESTO: [
+    'Ahorro / Donativo', 'SAT Reserva', 'Pago deuda', 'Empresa', 'Alimentación',
+    'Despensa/Reserva', 'Higiene y limpieza', 'Hogar', 'Transporte',
+    'Personal', 'Imprevisto',
+  ],
+  CATEGORIAS_OPCIONALES: [
+    'Restaurantes', 'Salud y medicamentos', 'Ropa y calzado', 'Educación y cursos',
+    'Entretenimiento', 'Mascotas', 'Regalos y fechas especiales', 'Viajes',
+    'Cuidado personal', 'Mantenimiento del hogar', 'Ahorro o inversión adicional',
+  ],
+  MAX_ROWS_REGISTROS: 1000,
+  PANEL_CATEGORIA_ROW: 7,
+  PANEL_SUBCATEGORIA_ROW: 8,
   INDICE_PROP_KEY: 'INDICE_SHEET_ID',
 };
 
@@ -146,7 +166,32 @@ function mapHeaders_(headers) {
     ahorroAuto: idx('¿Apartas un porcentaje de cada ingreso para ahorro automático?'),
     ahorroPct: idx('¿Qué porcentaje quieres apartar de cada ingreso?'),
     satActivo: idx('¿Estás dado de alta en el SAT como persona física?'),
+    categoriasForm: idx('¿Cuáles categorías de gasto usas regularmente?'),
   };
+}
+
+/**
+ * Empareja las frases libres del Form (col. 38, ej. "Hogar y
+ * mantenimiento", "Viajes o vacaciones") contra CFG.CATEGORIAS_OPCIONALES
+ * por substring o por palabra compartida de 5+ letras — así "Hogar y
+ * mantenimiento" sí encuentra "Mantenimiento del hogar" aunque el
+ * orden de las palabras no coincida.
+ */
+function matchCategoriasOpcionales_(frasesForm) {
+  const encontradas = [];
+  frasesForm.forEach(function (frase) {
+    const f = String(frase).toLowerCase();
+    CFG.CATEGORIAS_OPCIONALES.forEach(function (cat) {
+      if (encontradas.indexOf(cat) !== -1) return;
+      const c = cat.toLowerCase();
+      const coincidePorFrase = f.indexOf(c) !== -1 || c.indexOf(f) !== -1;
+      const coincidePorPalabra = c.split(' ')
+        .filter(function (w) { return w.length >= 5; })
+        .some(function (w) { return f.indexOf(w) !== -1; });
+      if (coincidePorFrase || coincidePorPalabra) encontradas.push(cat);
+    });
+  });
+  return encontradas;
 }
 
 /**
@@ -183,6 +228,7 @@ function parseClienteForm_(row, idx, origen) {
     ahorroPct: (String(row[idx.ahorroAuto]).trim().toLowerCase().indexOf('s') === 0 && row[idx.ahorroPct])
       ? Number(String(row[idx.ahorroPct]).replace('%', '').trim()) / 100
       : null,
+    categoriasOpcionales: matchCategoriasOpcionales_(splitLista_(row[idx.categoriasForm])),
   };
 }
 
@@ -195,9 +241,20 @@ function onboardCliente_(cliente) {
   const carpeta = DriveApp.getFolderById(CFG.CARPETA_CLIENTES_ID);
   const nombreArchivo = 'Finanzas — ' + cliente.nombre + ' | ROIS (staging)';
   const copia = DriveApp.getFileById(CFG.TEMPLATE_ID).makeCopy(nombreArchivo, carpeta);
+
+  // CRÍTICO para que el link "/copy" funcione: sin esto, alguien sin
+  // acceso previo ve "Solicitar acceso" en vez de "Hacer una copia"
+  // (y Daniel termina teniendo que darle acceso de Editor a mano —
+  // exactamente lo que pasó con Brenda). "Cualquiera con el enlace
+  // puede VER" es suficiente para que Google ofrezca copiarlo; no le
+  // da permiso de editar el original.
+  copia.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
   const ss = SpreadsheetApp.openById(copia.getId());
 
   llenarSetup_(ss, cliente);
+  personalizarCategorias_(ss, cliente);
+  personalizarSubcategoria_(ss, cliente);
   registrarEnIndice_(cliente, ss);
 
   return {
@@ -206,6 +263,50 @@ function onboardCliente_(cliente) {
     stagingSheetUrl: ss.getUrl(),
     linkCopia: 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/copy',
   };
+}
+
+/**
+ * Deja en Categoría (REGISTROS!E y 📝 REGISTRAR!B7) las 11 estándar +
+ * SOLO las opcionales que el cliente marcó en el Form — no las 22 de
+ * golpe, para no confundirlo con categorías que nunca va a usar.
+ */
+function personalizarCategorias_(ss, cliente) {
+  const categorias = CFG.CATEGORIAS_PRESUPUESTO.concat(cliente.categoriasOpcionales);
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(categorias, true)
+    .setAllowInvalid(true)
+    .build();
+
+  const registros = ss.getSheetByName(CFG.SHEETS.REGISTROS);
+  registros.getRange(2, 5, CFG.MAX_ROWS_REGISTROS - 1, 1).setDataValidation(rule);
+
+  const registrar = ss.getSheetByName(CFG.SHEETS.REGISTRAR);
+  if (registrar) registrar.getRange(CFG.PANEL_CATEGORIA_ROW, 2).setDataValidation(rule);
+}
+
+/**
+ * Deja en Subcategoría (REGISTROS!F y 📝 REGISTRAR!B8) una sugerencia
+ * con los nombres EXACTOS de deudas + servicios fijos de este cliente
+ * — texto libre sigue permitido (setAllowInvalid true), pero ahora
+ * puede elegir de la lista en vez de adivinar cómo escribir "Seguro
+ * de automóvil" para que el abono se reste de la deuda.
+ */
+function personalizarSubcategoria_(ss, cliente) {
+  const nombres = cliente.deudas.map(function (d) { return d.nombre; })
+    .concat(cliente.fijos)
+    .filter(Boolean);
+  if (nombres.length === 0) return;
+
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(nombres, true)
+    .setAllowInvalid(true)
+    .build();
+
+  const registros = ss.getSheetByName(CFG.SHEETS.REGISTROS);
+  registros.getRange(2, 6, CFG.MAX_ROWS_REGISTROS - 1, 1).setDataValidation(rule);
+
+  const registrar = ss.getSheetByName(CFG.SHEETS.REGISTRAR);
+  if (registrar) registrar.getRange(CFG.PANEL_SUBCATEGORIA_ROW, 2).setDataValidation(rule);
 }
 
 /**

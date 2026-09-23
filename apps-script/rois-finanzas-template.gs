@@ -53,19 +53,17 @@
  *    ⚙️ MI SETUP porque el DASHBOARD la necesita y no existía en la
  *    lista original de campos — ver nota en el mensaje de entrega.
  *  - CONVENCIÓN OBLIGATORIA para que "Monto actual" en DEUDAS baje
- *    solo: cuando el cliente registre un abono a una deuda en
- *    REGISTROS, la columna Subcategoría (F) debe tener EXACTAMENTE
- *    el mismo texto que el nombre del acreedor en ⚙️ MI SETUP
- *    columna A (ej. acreedor "Plata Card" → Subcategoría "Plata
- *    Card"). Si no coincide letra por letra, el abono no se resta.
- *  - Para blindar esa convención: un trigger onEdit (más abajo,
- *    función onEdit + aplicarValidacionSubcategoria_) pone un
- *    dropdown en Subcategoría, restringido a los nombres exactos de
- *    ⚙️ MI SETUP, cada vez que Categoría de esa fila = "Pago deuda".
- *    Es un trigger simple: no requiere instalación manual, funciona
- *    en cuanto el script está pegado en la hoja. Solo aplica a
- *    edición manual en la interfaz; las filas que llegan por el Web
- *    App (doPost) no pasan por aquí.
+ *    solo y para que VENCIMIENTOS marque "Pagado": la columna
+ *    Subcategoría (F) de REGISTROS debe tener EXACTAMENTE el mismo
+ *    texto que el nombre del acreedor o del servicio fijo en
+ *    ⚙️ MI SETUP columna A (ej. acreedor "Plata Card" → Subcategoría
+ *    "Plata Card"). Si no coincide letra por letra, el abono/pago no
+ *    se refleja. El Orchestrator (personalizarSubcategoria_, en
+ *    rois-orchestrator.gs) deja un dropdown de SUGERENCIA con todos
+ *    los nombres de deudas + servicios de ese cliente en Subcategoría
+ *    de REGISTROS y de 📝 REGISTRAR — permite texto libre también
+ *    (setAllowInvalid true), para no bloquear conceptos que no son ni
+ *    deuda ni servicio fijo.
  */
 
 const CONFIG = {
@@ -456,61 +454,6 @@ function buildRegistros_(ss) {
   sh.setConditionalFormatRules(rules);
 }
 
-/**
- * Trigger simple de Sheets: se ejecuta solo cuando el CLIENTE edita
- * manualmente REGISTROS desde la interfaz (no cuando doPost escribe
- * filas por API). Si la edición toca la columna E (Categoría) en una
- * o varias filas, revisa cada fila afectada y ajusta la validación
- * de Subcategoría (F) según corresponda.
- */
-function onEdit(e) {
-  try {
-    const range = e.range;
-    const sh = range.getSheet();
-    if (sh.getName() !== CONFIG.SHEETS.REGISTROS) return;
-
-    const firstCol = range.getColumn();
-    const lastCol = firstCol + range.getNumColumns() - 1;
-    const COL_CATEGORIA = 5; // E
-    if (firstCol > COL_CATEGORIA || lastCol < COL_CATEGORIA) return;
-
-    const firstRow = Math.max(range.getRow(), 2);
-    const lastRow = range.getRow() + range.getNumRows() - 1;
-    if (lastRow < 2) return;
-
-    for (let row = firstRow; row <= lastRow; row++) {
-      aplicarValidacionSubcategoria_(sh, row);
-    }
-  } catch (err) {
-    // Nunca interrumpir la edición del cliente por un error aquí.
-  }
-}
-
-/**
- * Si Categoría (E) de la fila = "Pago deuda", restringe Subcategoría
- * (F) a un dropdown con los nombres exactos de acreedores en
- * ⚙️ MI SETUP. En cualquier otro caso, quita esa restricción para
- * dejar Subcategoría como texto libre.
- */
-function aplicarValidacionSubcategoria_(sh, row) {
-  const categoria = sh.getRange(row, 5).getValue();
-  const fCell = sh.getRange(row, 6);
-  const ss = sh.getParent();
-  const setupSh = ss.getSheetByName(CONFIG.SHEETS.SETUP);
-  if (!setupSh) return;
-
-  if (categoria === 'Pago deuda') {
-    const rule = SpreadsheetApp.newDataValidation()
-      .requireValueInRange(setupSh.getRange(SETUP_ROWS.deudasStart, 1, CONFIG.CAP.DEUDAS, 1), true)
-      .setAllowInvalid(false)
-      .setHelpText('Debe coincidir exactamente con el nombre del acreedor en ⚙️ MI SETUP para que el abono se reste de la deuda.')
-      .build();
-    fCell.setDataValidation(rule);
-  } else {
-    fCell.clearDataValidations();
-  }
-}
-
 // ============================================================
 // HOJA 6: TABLAS (se construye antes que DASHBOARD porque el
 // selector de mes del DASHBOARD toma su lista de aquí)
@@ -519,12 +462,16 @@ function buildTablas_(ss) {
   const sh = getOrCreateSheet_(ss, CONFIG.SHEETS.TABLAS);
   const R = CONFIG.SHEETS.REGISTROS, S = CONFIG.SHEETS.SETUP, D = CONFIG.SHEETS.DEUDAS;
 
-  // Tabla 1: Ingresos vs Egresos por mes (últimos 12 meses)
-  setSectionHeader_(sh.getRange(1, 1, 1, 4), 'Ingresos vs Egresos por mes (últimos 12 meses)');
+  // Tabla 1: Ingresos vs Egresos por mes (mes actual + próximos 11) — el
+  // selector del DASHBOARD (B3) toma su lista de esta columna A, por
+  // eso arranca en el mes actual hacia adelante y no hacia atrás: un
+  // cliente nuevo no tiene meses pasados que revisar, pero sí necesita
+  // planear los que vienen.
+  setSectionHeader_(sh.getRange(1, 1, 1, 4), 'Ingresos vs Egresos por mes (mes actual + próximos 11)');
   setColumnHeaders_(sh.getRange(2, 1, 1, 4), ['Mes-Año', 'Ingresos', 'Egresos', 'Balance neto']);
   for (let i = 0; i < 12; i++) {
     const row = 3 + i;
-    sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),-11+${i}),"mmmm yyyy"))`);
+    sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),${i}),"mmmm yyyy"))`);
     sh.getRange(row, 2).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Ingreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Egreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 4).setFormula(`=B${row}-C${row}`).setNumberFormat('$#,##0.00');
@@ -552,12 +499,12 @@ function buildTablas_(ss) {
     sh.getRange(row, 2).setFormula(`=IF(${D}!A${deudaRow}="","",${D}!K${deudaRow})`).setNumberFormat('0.0%');
   }
 
-  // Tabla 4: Meta vs Ingresos reales (12 meses)
-  setSectionHeader_(sh.getRange(41, 1, 1, 4), 'Meta vs Ingresos reales (12 meses)');
+  // Tabla 4: Meta vs Ingresos reales (mes actual + próximos 11)
+  setSectionHeader_(sh.getRange(41, 1, 1, 4), 'Meta vs Ingresos reales (mes actual + próximos 11)');
   setColumnHeaders_(sh.getRange(42, 1, 1, 4), ['Mes-Año', 'Meta', 'Ingreso real', 'Cumplimiento %']);
   for (let i = 0; i < 12; i++) {
     const row = 43 + i;
-    sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),-11+${i}),"mmmm yyyy"))`);
+    sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),${i}),"mmmm yyyy"))`);
     sh.getRange(row, 2).setFormula(`='${S}'!$B$${SETUP_ROWS.metaRow}`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Ingreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 4).setFormula(`=IF(B${row}=0,"",C${row}/B${row})`).setNumberFormat('0.0%');
@@ -687,9 +634,11 @@ function buildVencimientos_(ss) {
     sh.getRange(row, 6).setFormula(
       `=IF(A${row}="","",IF(B${row}>=DAY(TODAY()),DATE(YEAR(TODAY()),MONTH(TODAY()),B${row}),EDATE(DATE(YEAR(TODAY()),MONTH(TODAY()),B${row}),1)))`
     ).setNumberFormat('dd/mm/yyyy');
-    // Estado: revisa si ya existe un cargo/egreso con ese concepto en el mes-año actual
+    // Estado: revisa si ya hay un egreso con Subcategoría = este servicio
+    // (misma convención que DEUDAS — no el Concepto, que es texto libre)
+    // en el mes-año actual.
     sh.getRange(row, 5).setFormula(
-      `=IF(A${row}="","",IF(COUNTIFS(${R}!$D:$D,A${row},${R}!$P:$P,PROPER(TEXT(TODAY(),"mmmm yyyy")))>0,"Pagado","Pendiente"))`
+      `=IF(A${row}="","",IF(COUNTIFS(${R}!$F:$F,A${row},${R}!$P:$P,PROPER(TEXT(TODAY(),"mmmm yyyy")))>0,"Pagado","Pendiente"))`
     );
     sh.getRange(row, 7).setFormula(
       `=IF(A${row}="","",IF(AND(F${row}-TODAY()<=3,F${row}-TODAY()>=0,E${row}="Pendiente"),"⚠️ PRÓXIMO",""))`
