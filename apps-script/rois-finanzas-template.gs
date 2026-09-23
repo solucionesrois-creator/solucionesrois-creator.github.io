@@ -154,6 +154,7 @@ function construirTemplateROIS() {
   buildDeudas_(ss);
   buildVencimientos_(ss);
   buildDashboard_(ss);
+  buildGraficas_(ss);
   reorderSheets_(ss);
 
   // Elimina la hoja "Hoja 1" / "Sheet1" en blanco que Sheets crea por defecto
@@ -519,13 +520,14 @@ function buildTablas_(ss) {
   const R = CONFIG.SHEETS.REGISTROS, S = CONFIG.SHEETS.SETUP, D = CONFIG.SHEETS.DEUDAS;
 
   // Tabla 1: Ingresos vs Egresos por mes (últimos 12 meses)
-  setSectionHeader_(sh.getRange(1, 1, 1, 3), 'Ingresos vs Egresos por mes (últimos 12 meses)');
-  setColumnHeaders_(sh.getRange(2, 1, 1, 3), ['Mes-Año', 'Ingresos', 'Egresos']);
+  setSectionHeader_(sh.getRange(1, 1, 1, 4), 'Ingresos vs Egresos por mes (últimos 12 meses)');
+  setColumnHeaders_(sh.getRange(2, 1, 1, 4), ['Mes-Año', 'Ingresos', 'Egresos', 'Balance neto']);
   for (let i = 0; i < 12; i++) {
     const row = 3 + i;
     sh.getRange(row, 1).setFormula(`=PROPER(TEXT(EDATE(TODAY(),-11+${i}),"mmmm yyyy"))`);
     sh.getRange(row, 2).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Ingreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
     sh.getRange(row, 3).setFormula(`=SUMIFS(${R}!$G:$G,${R}!$C:$C,"Egreso",${R}!$P:$P,A${row})`).setNumberFormat('$#,##0.00');
+    sh.getRange(row, 4).setFormula(`=B${row}-C${row}`).setNumberFormat('$#,##0.00');
   }
 
   // Tabla 2: Gastos por categoría del mes actual
@@ -800,6 +802,78 @@ function buildDashboard_(ss) {
   sh.setColumnWidths(1, 1, 220);
   sh.setColumnWidths(2, 4, 120);
   sh.setFrozenRows(3);
+}
+
+// ============================================================
+// GRÁFICAS — se insertan en DASHBOARD, a la derecha del resumen
+// numérico (columna H en adelante), leyendo de TABLAS. Se borran y
+// se vuelven a crear cada vez que corre construirTemplateROIS, para
+// que re-ejecutarlo no vaya acumulando gráficas duplicadas.
+// ============================================================
+function buildGraficas_(ss) {
+  const dash = ss.getSheetByName(CONFIG.SHEETS.DASHBOARD);
+  const tablas = ss.getSheetByName(CONFIG.SHEETS.TABLAS);
+  const catCount = CONFIG.CATEGORIAS_PRESUPUESTO.length;
+  const deudaCount = CONFIG.CAP.DEUDAS;
+
+  dash.getCharts().forEach((chart) => dash.removeChart(chart));
+
+  // 1. Ingresos vs Egresos por mes (columnas) — TABLAS!A2:C14
+  dash.insertChart(
+    dash.newChart()
+      .setChartType(Charts.ChartType.COLUMN)
+      .addRange(tablas.getRange(2, 1, 13, 3))
+      .setPosition(2, 8, 0, 0)
+      .setOption('title', 'Ingresos vs Egresos por mes')
+      .setOption('width', 480).setOption('height', 300)
+      .build()
+  );
+
+  // 2. Evolución del balance neto (línea) — TABLAS!A2, D2:D14
+  dash.insertChart(
+    dash.newChart()
+      .setChartType(Charts.ChartType.LINE)
+      .addRange(tablas.getRange(2, 1, 13, 1))
+      .addRange(tablas.getRange(2, 4, 13, 1))
+      .setPosition(20, 8, 0, 0)
+      .setOption('title', 'Evolución del balance neto')
+      .setOption('width', 480).setOption('height', 300)
+      .build()
+  );
+
+  // 3. Gastos por categoría del mes (pastel) — TABLAS!A17:B28
+  dash.insertChart(
+    dash.newChart()
+      .setChartType(Charts.ChartType.PIE)
+      .addRange(tablas.getRange(17, 1, catCount + 1, 2))
+      .setPosition(38, 8, 0, 0)
+      .setOption('title', 'Gastos por categoría (mes actual)')
+      .setOption('width', 480).setOption('height', 320)
+      .build()
+  );
+
+  // 4. Progreso de liquidación de deudas (barras) — TABLAS!A31:B39
+  dash.insertChart(
+    dash.newChart()
+      .setChartType(Charts.ChartType.BAR)
+      .addRange(tablas.getRange(31, 1, deudaCount + 1, 2))
+      .setPosition(58, 8, 0, 0)
+      .setOption('title', 'Progreso de liquidación de deudas')
+      .setOption('width', 480).setOption('height', 300)
+      .build()
+  );
+
+  // 5. Ingresos reales vs Meta (combo) — TABLAS!A42:C54
+  dash.insertChart(
+    dash.newChart()
+      .setChartType(Charts.ChartType.COMBO)
+      .addRange(tablas.getRange(42, 1, 13, 3))
+      .setPosition(76, 8, 0, 0)
+      .setOption('title', 'Ingresos reales vs Meta')
+      .setOption('width', 480).setOption('height', 300)
+      .setOption('series', { 0: { type: 'line' }, 1: { type: 'line' } })
+      .build()
+  );
 }
 
 // ============================================================
